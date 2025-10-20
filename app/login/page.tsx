@@ -2,12 +2,13 @@
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
-import axios from "@/lib/axios"; // our axios instance
+import axios from "@/lib/axios";
 import { Card, CardContent } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Mail, Lock } from "lucide-react";
 
+// ✅ Simple toast
 function useToast() {
   return {
     toast: (opts: { title?: string; description?: string; variant?: string }) => {
@@ -32,28 +33,32 @@ export default function LoginPage() {
     setLoading(true);
 
     try {
-      const res = await axios.post("/users/login", formData); // ✅ axios sends cookies automatically
+      // ✅ CRITICAL FIX: include credentials so backend can set HttpOnly cookie
+      const res = await axios.post("/users/login", formData, { withCredentials: true });
       const data = res.data;
       setLoading(false);
 
       if (data.status === "success" && data.data?.user) {
         const user = data.data.user;
-        const role = user.role.trim().toLowerCase();
+        const role = user.role?.trim().toLowerCase();
 
-        // ✅ Store role cookie for middleware
+        // ✅ Store non-sensitive role in readable cookie (optional)
         document.cookie = `role=${role}; path=/; max-age=3600; SameSite=Lax`;
+        document.cookie = `jwt=${data.token}; path=/; max-age=86400; SameSite=Lax`;
 
         toast({
           title: "✅ Login Successful",
           description: `Welcome back, ${user.userName || "User"}!`,
         });
 
-        // ✅ Redirect based on role
-        setTimeout(() => {
-          if (role === "admin") router.push("/dashboard/admin");
-          else if (role === "pharmacist") router.push("/dashboard/pharmacist");
-          else router.push("/unauthorized");
-        }, 400);
+        // ✅ Redirect — full reload ensures middleware reads cookies
+        if (role === "admin") {
+          window.location.href = "/dashboard/admin";
+        } else if (role === "pharmacist") {
+          window.location.href = "/dashboard/pharmacist";
+        } else {
+          window.location.href = "/unauthorized";
+        }
       } else {
         toast({
           variant: "destructive",
@@ -68,7 +73,7 @@ export default function LoginPage() {
         title: "⚠️ Error",
         description: "Something went wrong. Try again.",
       });
-      console.error(err);
+      console.error("Login error:", err);
     }
   };
 
@@ -76,14 +81,16 @@ export default function LoginPage() {
     <div className="flex items-center justify-center min-h-screen bg-gradient-to-r from-blue-50 to-blue-100">
       <Card className="w-full max-w-md p-8 shadow-lg rounded-2xl">
         <CardContent>
-          <h1 className="text-3xl font-semibold text-center mb-6 text-blue-700">Login</h1>
+          <h1 className="text-3xl font-semibold text-center mb-6 text-blue-700">
+            Login
+          </h1>
           <form onSubmit={handleSubmit} className="space-y-4">
             <div className="relative">
               <Mail className="absolute left-3 top-3 text-gray-400" size={18} />
               <Input
                 type="email"
                 name="email"
-                placeholder="Email address"
+                placeholder="Email"
                 className="pl-10"
                 value={formData.email}
                 onChange={handleChange}
@@ -104,7 +111,11 @@ export default function LoginPage() {
               />
             </div>
 
-            <Button type="submit" disabled={loading} className="w-full bg-blue-600 hover:bg-blue-700 text-white">
+            <Button
+              type="submit"
+              disabled={loading}
+              className="w-full bg-blue-600 hover:bg-blue-700 text-white"
+            >
               {loading ? "Logging in..." : "Login"}
             </Button>
           </form>

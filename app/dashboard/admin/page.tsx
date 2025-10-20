@@ -1,12 +1,15 @@
-"use client";
-
+// app/dashboard/admin/page.tsx
 import { DashboardCard } from "@/components/dashboard/DashboardCard";
-import { Users, Pill, BarChart3, UserPlus } from "lucide-react";
-import { Button } from "@/components/ui/button";
-import { useRouter } from "next/navigation";
+import { Users, Pill, BarChart3 } from "lucide-react";
+import { cookies } from "next/headers";
+import { redirect } from "next/navigation";
+import CreateUserButton from "@/components/dashboard/CreateUserButton";
 
-export default function AdminDashboard() {
-  const router = useRouter();
+export default async function AdminDashboard() {
+  const jwt = (await cookies()).get("jwt")?.value;
+  const role = (await cookies()).get("role")?.value;
+
+  if (!jwt || role !== "admin") redirect("/unauthorized");
 
   const cards = [
     { title: "Total Users", value: "12", icon: Users },
@@ -18,16 +21,8 @@ export default function AdminDashboard() {
     <div className="space-y-6">
       <div className="flex justify-between items-center">
         <h1 className="text-2xl font-semibold text-blue-700">Admin Dashboard</h1>
-
-        <Button
-          onClick={() => router.push("/signup")}
-          className="flex items-center gap-2 bg-blue-600 hover:bg-blue-700 text-white"
-        >
-          <UserPlus size={18} />
-          Create User
-        </Button>
+        <CreateUserButton />
       </div>
-
       <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
         {cards.map((c) => (
           <DashboardCard key={c.title} {...c} />
