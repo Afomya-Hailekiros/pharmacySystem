@@ -7,16 +7,8 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Mail, Lock } from "lucide-react";
-
-// ✅ Simple toast
-function useToast() {
-  return {
-    toast: (opts: { title?: string; description?: string; variant?: string }) => {
-      const message = `${opts.title || ""}${opts.description ? " - " + opts.description : ""}`;
-      alert(message);
-    },
-  };
-}
+import { useToast } from "@/components/ui/use-toast"; // ✅ use the toast provider
+import { Toaster } from "@/components/ui/toaster";    // ✅ render toaster
 
 export default function LoginPage() {
   const [formData, setFormData] = useState({ email: "", password: "" });
@@ -33,7 +25,6 @@ export default function LoginPage() {
     setLoading(true);
 
     try {
-      // ✅ CRITICAL FIX: include credentials so backend can set HttpOnly cookie
       const res = await axios.post("/users/login", formData, { withCredentials: true });
       const data = res.data;
       setLoading(false);
@@ -42,36 +33,39 @@ export default function LoginPage() {
         const user = data.data.user;
         const role = user.role?.trim().toLowerCase();
 
-        // ✅ Store non-sensitive role in readable cookie (optional)
+        // Store non-sensitive data
         document.cookie = `role=${role}; path=/; max-age=3600; SameSite=Lax`;
         document.cookie = `jwt=${data.token}; path=/; max-age=86400; SameSite=Lax`;
 
         toast({
           title: "✅ Login Successful",
           description: `Welcome back, ${user.userName || "User"}!`,
+          variant: "success",
         });
 
-        // ✅ Redirect — full reload ensures middleware reads cookies
-        if (role === "admin") {
-          window.location.href = "/dashboard/admin";
-        } else if (role === "pharmacist") {
-          window.location.href = "/dashboard/pharmacist";
-        } else {
-          window.location.href = "/unauthorized";
-        }
+        const redirectTo =
+          new URLSearchParams(window.location.search).get("redirect") ||
+          (role === "admin"
+            ? "/dashboard/admin"
+            : role === "pharmacist"
+            ? "/dashboard/pharmacist"
+            : "/unauthorized");
+
+        // Slight delay to let toast appear
+        setTimeout(() => window.location.href = redirectTo, 1200);
       } else {
         toast({
-          variant: "destructive",
           title: "❌ Login Failed",
           description: data.message || "Invalid email or password.",
+          variant: "destructive",
         });
       }
     } catch (err: any) {
       setLoading(false);
       toast({
-        variant: "destructive",
         title: "⚠️ Error",
         description: "Something went wrong. Try again.",
+        variant: "destructive",
       });
       console.error("Login error:", err);
     }
@@ -79,7 +73,7 @@ export default function LoginPage() {
 
   return (
     <div className="flex items-center justify-center min-h-screen bg-gradient-to-r from-blue-50 to-blue-100">
-      <Card className="w-full max-w-md p-8 shadow-lg rounded-2xl">
+      <Card className="w-full max-w-md p-8 shadow-lg rounded-2xl relative">
         <CardContent>
           <h1 className="text-3xl font-semibold text-center mb-6 text-blue-700">
             Login
@@ -120,6 +114,9 @@ export default function LoginPage() {
             </Button>
           </form>
         </CardContent>
+
+        {/* ✅ Toast container */}
+        <Toaster />
       </Card>
     </div>
   );

@@ -1,7 +1,10 @@
+// app/layout.tsx
 import "./globals.css";
 import type { Metadata } from "next";
 import { ThemeProvider } from "@/components/theme-provider";
 import ClientRedirect from "@/components/ClientRedirect";
+import { ToastProvider } from "@/components/ui/use-toast";
+import { Toaster } from "@/components/ui/toaster";
 
 export const metadata: Metadata = {
   title: "Pharmacy Admin",
@@ -14,9 +17,13 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
       <body>
         <ThemeProvider attribute="class" defaultTheme="system" enableSystem>
           <ClientRedirect />
-          <main className="min-h-screen bg-background text-foreground">
-            {children}
-          </main>
+          {/* Wrap only client stuff in a div with "use client" */}
+          <div>
+            <ToastProvider>
+              {children}
+              <Toaster />
+            </ToastProvider>
+          </div>
         </ThemeProvider>
       </body>
     </html>

@@ -1,8 +1,9 @@
+// lib/axios.ts
 import axios from "axios";
 
-const instance = axios.create({
-  baseURL: "https://pharmacy-management-9ls6.onrender.com/api/v1",
-  withCredentials: true, // ✅ automatically send & receive cookies
+const axiosInstance = axios.create({
+  baseURL: "https://pharmacy-management-9ls6.onrender.com/api/v1", // ✅ full URL
+  withCredentials: true, // ✅ include cookies
 });
 
-export default instance;
+export default axiosInstance;

@@ -16,15 +16,15 @@ export const Sidebar = () => {
 
   return (
     <aside className="w-64 bg-white border-r shadow-sm p-4 flex flex-col">
-      <h2 className="text-2xl font-bold mb-8 text-green-700">Pharma Admin</h2>
+      <h2 className="text-2xl font-bold mb-8 text-black">Pharma Admin</h2>
       <nav className="flex flex-col space-y-2">
         {links.map(({ href, label, icon: Icon }) => (
           <Link
             key={href}
             href={href}
             className={cn(
-              "flex items-center gap-3 px-3 py-2 rounded-lg hover:bg-green-100 transition",
-              pathname === href && "bg-green-200 text-green-800 font-medium"
+              "flex items-center gap-3 px-3 py-2 rounded-lg text-black hover:bg-green-300 transition",
+              pathname === href && "bg-green-400 text-black font-semibold"
             )}
           >
             <Icon className="h-5 w-5" />
