@@ -1,191 +1,276 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { DashboardCard } from "@/components/dashboard/DashboardCard";
-import { Users, Pill, BarChart3, List, PlusCircle } from "lucide-react";
+import axios from "@/lib/axios";
+import { Card, CardContent } from "@/components/ui/card";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Pencil, Trash2, Save, X, UserPlus } from "lucide-react";
 import { useRouter } from "next/navigation";
-import axios from "axios";
-import { useToast } from "@/components/ui/use-toast"; // ✅ use your toast provider
-import { Toaster } from "@/components/ui/toaster";    // ✅ render toaster
+import { useToast } from "@/components/ui/use-toast"; // ✅ toast provider
+import { Toaster } from "@/components/ui/toaster";    // ✅ toaster container
 
-interface Category {
-  _id: string;
-  name: string;
+// Utility to read cookie
+function getCookie(name: string) {
+  const matches = document.cookie.match(
+    new RegExp(
+      "(?:^|; )" +
+        name.replace(/([\.$?*|{}\(\)\[\]\\\/\+^])/g, "\\$1") +
+        "=([^;]*)"
+    )
+  );
+  return matches ? decodeURIComponent(matches[1]) : undefined;
 }
 
-export default function AdminDashboard() {
+interface User {
+  _id: string;
+  userName: string;
+  email: string;
+  role: string;
+}
+
+export default function UsersPage() {
+  const [users, setUsers] = useState<User[]>([]);
+  const [editingUser, setEditingUser] = useState<string | null>(null);
+  const [editData, setEditData] = useState({ userName: "", email: "", role: "" });
+  const [loading, setLoading] = useState(false);
   const router = useRouter();
   const { toast } = useToast();
-  const [jwt, setJwt] = useState<string | null>(null);
-  const [role, setRole] = useState<string | null>(null);
-  const [categories, setCategories] = useState<Category[]>([]);
-  const [categoryName, setCategoryName] = useState("");
-  const [loading, setLoading] = useState(false);
 
-  // ✅ Read cookies client-side
-  useEffect(() => {
-    const jwtCookie = document.cookie
-      .split("; ")
-      .find((row) => row.startsWith("jwt="))
-      ?.split("=")[1];
-    const roleCookie = document.cookie
-      .split("; ")
-      .find((row) => row.startsWith("role="))
-      ?.split("=")[1];
-
-    setJwt(jwtCookie || null);
-    setRole(roleCookie || null);
-
-    if (!jwtCookie || roleCookie !== "admin") {
-      router.push("/unauthorized");
-    }
-  }, [router]);
-
-  // ✅ Fetch categories
-  const fetchCategories = async () => {
-    if (!jwt) return;
+  // Fetch users
+  const fetchUsers = async () => {
     try {
-      const res = await axios.get(
-        "https://pharmacy-management-9ls6.onrender.com/api/v1/category",
-        {
-          headers: {
-            Authorization: `Bearer ${jwt}`,
-          },
-        }
-      );
-      setCategories(res.data.data || []);
-    } catch (error) {
-      console.error("Failed to fetch categories:", error);
-      toast({
-        title: "Fetch Error",
-        description: "Failed to load categories.",
-        variant: "destructive",
+      const token = getCookie("jwt");
+      const res = await axios.get("/users", {
+        headers: { Authorization: `Bearer ${token}` },
+        withCredentials: true,
       });
+      setUsers(res.data.data.users);
+    } catch (err: any) {
+      console.error(err);
+      if (err.response?.status === 401) {
+        toast({
+          title: "⚠️ Unauthorized",
+          description: "Please log in again.",
+          variant: "destructive",
+        });
+        router.push("/login");
+      } else {
+        toast({
+          title: "⚠️ Error",
+          description: "Failed to fetch users.",
+          variant: "destructive",
+        });
+      }
     }
   };
 
   useEffect(() => {
-    if (jwt) fetchCategories();
-  }, [jwt]);
+    fetchUsers();
+  }, []);
 
-  // ✅ Add new category
-  const handleAddCategory = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!categoryName.trim()) {
-      toast({
-        title: "Validation Error",
-        description: "Please enter a category name.",
-        variant: "destructive",
-      });
-      return;
-    }
-
+  // Delete user
+  const handleDelete = async (id: string) => {
+    if (!confirm("Are you sure you want to delete this user?")) return;
     try {
-      setLoading(true);
-      await axios.post(
-        "https://pharmacy-management-9ls6.onrender.com/api/v1/category",
-        { name: categoryName },
-        {
-          headers: {
-            Authorization: `Bearer ${jwt}`,
-          },
-        }
-      );
-
-      toast({
-        title: "Success",
-        description: "Category added successfully!",
+      const token = getCookie("jwt");
+      await axios.delete(`/users/${id}`, {
+        headers: { Authorization: `Bearer ${token}` },
+        withCredentials: true,
       });
-
-      setCategoryName("");
-      fetchCategories();
-    } catch (error: any) {
-      console.error("Error adding category:", error);
       toast({
-        title: "Error",
-        description:
-          error.response?.data?.message || "Failed to add category.",
-        variant: "destructive",
+        title: "✅ Deleted",
+        description: "User deleted successfully.",
+        variant: "success",
       });
+      setUsers(users.filter((u) => u._id !== id));
+    } catch (err: any) {
+      if (err.response?.status === 401) {
+        toast({
+          title: "⚠️ Unauthorized",
+          description: "Please log in again.",
+          variant: "destructive",
+        });
+        router.push("/login");
+      } else {
+        toast({
+          title: "⚠️ Error",
+          description: "Failed to delete user.",
+          variant: "destructive",
+        });
+      }
+    }
+  };
+
+  // Start editing
+  const handleEdit = (user: User) => {
+    setEditingUser(user._id);
+    setEditData({ userName: user.userName, email: user.email, role: user.role });
+  };
+
+  // Cancel editing
+  const handleCancel = () => {
+    setEditingUser(null);
+    setEditData({ userName: "", email: "", role: "" });
+  };
+
+  // Save edited user
+  const handleSave = async (id: string) => {
+    setLoading(true);
+    try {
+      const token = getCookie("jwt");
+      await axios.put(`/users/${id}`, editData, {
+        headers: { Authorization: `Bearer ${token}` },
+        withCredentials: true,
+      });
+      toast({
+        title: "✅ Updated",
+        description: "User updated successfully.",
+        variant: "success",
+      });
+      setEditingUser(null);
+      fetchUsers();
+    } catch (err: any) {
+      if (err.response?.status === 401) {
+        toast({
+          title: "⚠️ Unauthorized",
+          description: "Please log in again.",
+          variant: "destructive",
+        });
+        router.push("/login");
+      } else {
+        toast({
+          title: "⚠️ Error",
+          description: "Failed to update user.",
+          variant: "destructive",
+        });
+      }
     } finally {
       setLoading(false);
     }
   };
 
-  // ✅ Dashboard cards
-  const cards = [
-    { title: "Total Users", value: "12", icon: Users },
-    { title: "Medicines in Stock", value: "234", icon: Pill },
-    { title: "Weekly Sales", value: "$4,520", icon: BarChart3 },
-    { title: "Categories", value: categories.length.toString(), icon: List },
-  ];
-
   return (
-    <div className="space-y-6">
-      {/* Toast Renderer */}
-      <Toaster />
+    <div className="min-h-screen bg-gradient-to-r from-blue-50 to-blue-100 p-8">
+      <Toaster /> {/* ✅ render Toaster */}
 
-      {/* Header */}
-      <div className="flex justify-between items-center">
-        <h1 className="text-2xl font-semibold text-blue-700">
-          Admin Dashboard
-        </h1>
+      {/* Header and Create Button */}
+      <div className="flex justify-between items-center mb-6 max-w-5xl mx-auto">
+        <h1 className="text-3xl font-semibold text-blue-700">Manage Users</h1>
+        <Button
+          size="sm"
+          className="flex items-center gap-2 bg-green-600 hover:bg-green-700 text-white"
+          onClick={() => router.push("/signup")}
+        >
+          <UserPlus size={18} /> Create New User
+        </Button>
       </div>
 
-      {/* Cards */}
-      <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
-        {cards.map((card) => (
-          <DashboardCard key={card.title} {...card} />
-        ))}
-      </div>
-
-      {/* ✅ Category Form */}
-      <div className="mt-8 p-6 border rounded-lg bg-gray-50">
-        <h2 className="text-lg font-semibold mb-4 text-gray-700 flex items-center gap-2">
-          <PlusCircle className="w-5 h-5 text-blue-600" />
-          Add New Category
-        </h2>
-
-        <form onSubmit={handleAddCategory} className="flex gap-3">
-          <input
-            type="text"
-            placeholder="Enter category name"
-            value={categoryName}
-            onChange={(e) => setCategoryName(e.target.value)}
-            className="flex-1 p-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-          />
-          <button
-            type="submit"
-            disabled={loading}
-            className="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 disabled:opacity-60"
-          >
-            {loading ? "Adding..." : "Add"}
-          </button>
-        </form>
-      </div>
-
-      {/* ✅ Category List */}
-      <div className="mt-8">
-        <h2 className="text-lg font-semibold mb-3 text-gray-700 flex items-center gap-2">
-          <List className="w-5 h-5 text-blue-600" />
-          Category List
-        </h2>
-
-        <ul className="space-y-2">
-          {categories.length > 0 ? (
-            categories.map((cat) => (
-              <li
-                key={cat._id}
-                className="p-3 border rounded-lg bg-white text-gray-700 flex justify-between items-center shadow-sm"
-              >
-                <span>{cat.name}</span>
-              </li>
-            ))
+      {/* Users Table */}
+      <Card className="max-w-5xl mx-auto shadow-lg rounded-2xl">
+        <CardContent className="p-6">
+          {users.length === 0 ? (
+            <p className="text-center text-gray-500">No users found.</p>
           ) : (
-            <p className="text-gray-500">No categories found.</p>
+            <div className="overflow-x-auto">
+              <table className="w-full border-collapse">
+                <thead>
+                  <tr className="bg-blue-600 text-white text-left">
+                    <th className="p-3">Username</th>
+                    <th className="p-3">Email</th>
+                    <th className="p-3">Role</th>
+                    <th className="p-3 text-center">Actions</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {users.map((user) => (
+                    <tr
+                      key={user._id}
+                      className="border-b hover:bg-blue-50 transition-colors"
+                    >
+                      {editingUser === user._id ? (
+                        <>
+                          <td className="p-3">
+                            <Input
+                              value={editData.userName}
+                              onChange={(e) =>
+                                setEditData({ ...editData, userName: e.target.value })
+                              }
+                            />
+                          </td>
+                          <td className="p-3">
+                            <Input
+                              value={editData.email}
+                              onChange={(e) =>
+                                setEditData({ ...editData, email: e.target.value })
+                              }
+                            />
+                          </td>
+                          <td className="p-3">
+                            <select
+                              value={editData.role}
+                              onChange={(e) =>
+                                setEditData({ ...editData, role: e.target.value })
+                              }
+                              className="border border-gray-300 rounded-lg p-2"
+                            >
+                              <option value="admin">Admin</option>
+                              <option value="pharmacist">Pharmacist</option>
+                              <option value="customer">Customer</option>
+                            </select>
+                          </td>
+                          <td className="p-3 text-center flex gap-2 justify-center">
+                            <Button
+                              size="sm"
+                              onClick={() => handleSave(user._id)}
+                              disabled={loading}
+                              className="bg-green-600 hover:bg-green-700 text-white flex items-center gap-1"
+                            >
+                              <Save size={16} /> Save
+                            </Button>
+                            <Button
+                              size="sm"
+                              variant="secondary"
+                              onClick={handleCancel}
+                              className="flex items-center gap-1"
+                            >
+                              <X size={16} /> Cancel
+                            </Button>
+                          </td>
+                        </>
+                      ) : (
+                        <>
+                          <td className="p-3">{user.userName}</td>
+                          <td className="p-3">{user.email}</td>
+                          <td className="p-3">{user.role}</td>
+                          <td className="p-3 text-center flex gap-2 justify-center">
+                            <Button
+                              size="sm"
+                              variant="secondary"
+                              onClick={() => handleEdit(user)}
+                              className="flex items-center gap-1"
+                            >
+                              <Pencil size={16} /> Edit
+                            </Button>
+                            <Button
+                              size="sm"
+                              variant="destructive"
+                              onClick={() => handleDelete(user._id)}
+                              className="flex items-center gap-1"
+                            >
+                              <Trash2 size={16} /> Delete
+                            </Button>
+                          </td>
+                        </>
+                      )}
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
           )}
-        </ul>
-      </div>
+        </CardContent>
+      </Card>
     </div>
   );
 }
