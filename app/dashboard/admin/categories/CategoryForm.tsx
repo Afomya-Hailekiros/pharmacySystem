@@ -1,75 +1,96 @@
 "use client";
 
 import { useState, useEffect } from "react";
+import axios from "@/lib/axios";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-
-// Lightweight fallback toast implementation to avoid depending on 'sonner'
-const toast = {
-  success: (msg: string) => {
-    if (typeof window !== "undefined" && (window as any).toast?.success) {
-      (window as any).toast.success(msg);
-    } else {
-      // fallback: log to console (or replace with alert/modal as desired)
-      console.log("Success:", msg);
-    }
-  },
-  error: (msg: string) => {
-    if (typeof window !== "undefined" && (window as any).toast?.error) {
-      (window as any).toast.error(msg);
-    } else {
-      console.error("Error:", msg);
-    }
-  },
-};
+import { useToast } from "@/components/ui/use-toast";
+import { Toaster } from "@/components/ui/toaster";
 
 export default function CategoryForm({ categoryId }: { categoryId?: string }) {
   const [name, setName] = useState("");
   const [description, setDescription] = useState("");
   const [loading, setLoading] = useState(false);
+  const { toast } = useToast();
+
   const BASE_URL = "https://pharmacy-management-9ls6.onrender.com/api/v1/category";
 
-  // If editing existing category
+  // ✅ Fetch category if editing
   useEffect(() => {
     if (categoryId) {
-      fetch(`${BASE_URL}/${categoryId}`)
-        .then((res) => res.json())
-        .then((data) => {
-          setName(data?.data?.category?.name || "");
-          setDescription(data?.data?.category?.description || "");
-
+      console.log("Fetching category with ID:", categoryId);
+      axios
+        .get(`${BASE_URL}/${categoryId}`, { withCredentials: true })
+        .then((res) => {
+          console.log("Fetched category data:", res.data);
+          const cat = res.data?.data?.category;
+          setName(cat?.name || "");
+          setDescription(cat?.description || "");
         })
-        .catch(() => toast.error("Failed to load category"));
+        .catch((err) => {
+          console.error("Error fetching category:", err);
+          toast({
+            title: "⚠️ Failed to load category",
+            description: err.response?.data?.message || "Error loading category",
+            variant: "destructive",
+          });
+        });
     }
   }, [categoryId]);
 
+  // ✅ Submit handler
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setLoading(true);
-
-    const method = categoryId ? "PATCH" : "POST";
-    const url = categoryId ? `${BASE_URL}/${categoryId}` : BASE_URL;
+    console.log("Submitting category form...");
 
     try {
-      const res = await fetch(url, {
+      const jwt = document.cookie
+        .split("; ")
+        .find((row) => row.startsWith("jwt="))
+        ?.split("=")[1];
+
+      console.log("Extracted JWT:", jwt ? "✅ Found token" : "❌ No token");
+
+      const method = categoryId ? "patch" : "post";
+      const url = categoryId ? `${BASE_URL}/${categoryId}` : BASE_URL;
+
+      const res = await axios({
         method,
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ name, description }),
-        credentials: "include",
-
+        url,
+        data: { name, description },
+        headers: { Authorization: `Bearer ${jwt}` },
+        withCredentials: true,
       });
-      const data = await res.json();
 
-      if (res.ok) {
-        toast.success(categoryId ? "Category updated!" : "Category created!");
+      console.log("Category response:", res.data);
+
+      if (res.status === 200 || res.status === 201) {
+        toast({
+          title: "✅ Success",
+          description: categoryId
+            ? "Category updated successfully!"
+            : "Category created successfully!",
+          variant: "success",
+        });
         setName("");
         setDescription("");
       } else {
-        toast.error(data?.message || "Something went wrong");
+        toast({
+          title: "❌ Error",
+          description: res.data?.message || "Unexpected error occurred.",
+          variant: "destructive",
+        });
       }
-    } catch {
-      toast.error("Network error");
+    } catch (err: any) {
+      console.error("Category form error:", err);
+      toast({
+        title: "⚠️ Network or Auth Error",
+        description:
+          err.response?.data?.message || "Something went wrong. Check console.",
+        variant: "destructive",
+      });
     } finally {
       setLoading(false);
     }
@@ -78,12 +99,16 @@ export default function CategoryForm({ categoryId }: { categoryId?: string }) {
   return (
     <Card className="max-w-md shadow-md">
       <CardHeader>
-        <CardTitle>{categoryId ? "Edit Category" : "Add Category"}</CardTitle>
+        <CardTitle>
+          {categoryId ? "Edit Category" : "Add Category"}
+        </CardTitle>
       </CardHeader>
       <CardContent>
         <form onSubmit={handleSubmit} className="space-y-4">
           <div>
-            <label className="block text-sm font-medium text-gray-700">Category Name</label>
+            <label className="block text-sm font-medium text-gray-700">
+              Category Name
+            </label>
             <Input
               value={name}
               onChange={(e) => setName(e.target.value)}
@@ -92,7 +117,9 @@ export default function CategoryForm({ categoryId }: { categoryId?: string }) {
             />
           </div>
           <div>
-            <label className="block text-sm font-medium text-gray-700">Description</label>
+            <label className="block text-sm font-medium text-gray-700">
+              Description
+            </label>
             <Input
               value={description}
               onChange={(e) => setDescription(e.target.value)}
@@ -100,9 +127,16 @@ export default function CategoryForm({ categoryId }: { categoryId?: string }) {
             />
           </div>
           <Button type="submit" disabled={loading} className="w-full">
-            {loading ? "Saving..." : categoryId ? "Update" : "Create"}
+            {loading
+              ? "Saving..."
+              : categoryId
+              ? "Update Category"
+              : "Create Category"}
           </Button>
         </form>
+
+        {/* ✅ Toast Container */}
+        <Toaster />
       </CardContent>
     </Card>
   );

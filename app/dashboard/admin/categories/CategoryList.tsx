@@ -1,66 +1,94 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import axios from "@/lib/axios";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-
-const toast: { success: (msg: string) => void; error: (msg: string) => void } = {
-  success: (msg: string) => {
-    if (typeof window !== "undefined" && (window as any).toast?.success) {
-      (window as any).toast.success(msg);
-    } else {
-      if (typeof window !== "undefined") window.alert(msg);
-      else console.log("SUCCESS:", msg);
-    }
-  },
-  error: (msg: string) => {
-    if (typeof window !== "undefined" && (window as any).toast?.error) {
-      (window as any).toast.error(msg);
-    } else {
-      if (typeof window !== "undefined") window.alert(msg);
-      else console.error("ERROR:", msg);
-    }
-  },
-};
+import { useToast } from "@/components/ui/use-toast";
+import { Toaster } from "@/components/ui/toaster";
 
 export default function CategoryList() {
   const [categories, setCategories] = useState<any[]>([]);
+  const { toast } = useToast();
   const BASE_URL = "https://pharmacy-management-9ls6.onrender.com/api/v1/category";
 
   const fetchCategories = async () => {
     try {
-     const res = await fetch(BASE_URL, {
-     credentials: "include",
-     });
-      const data = await res.json();
-      if (res.ok) {
-        setCategories(data.data.categories);
+      const jwt = document.cookie
+        .split("; ")
+        .find((row) => row.startsWith("jwt="))
+        ?.split("=")[1];
+
+      console.log("Fetching categories... JWT:", jwt ? "✅ Found" : "❌ Missing");
+
+      const res = await axios.get(BASE_URL, {
+        headers: { Authorization: `Bearer ${jwt}` },
+        withCredentials: true,
+      });
+
+      console.log("Fetched categories:", res.data);
+
+      if (res.status === 200 && res.data?.data?.categories) {
+        setCategories(res.data.data.categories);
       } else {
-        toast.error("Failed to load categories");
+        toast({
+          title: "❌ Failed",
+          description: res.data?.message || "Failed to load categories",
+          variant: "destructive",
+        });
       }
-    } catch {
-      toast.error("Network error");
+    } catch (err: any) {
+      console.error("Error fetching categories:", err);
+      toast({
+        title: "⚠️ Error",
+        description:
+          err.response?.data?.message || "Network or auth issue occurred.",
+        variant: "destructive",
+      });
     }
   };
 
   const handleDelete = async (id: string) => {
     if (!confirm("Are you sure you want to delete this category?")) return;
 
-try {
-  const res = await fetch(`${BASE_URL}/${id}`, {
-    method: "DELETE",
-    credentials: "include",
-  });
+    try {
+      const jwt = document.cookie
+        .split("; ")
+        .find((row) => row.startsWith("jwt="))
+        ?.split("=")[1];
 
-  if (res.ok) {
-    toast.success("Category deleted!");
-    fetchCategories();
-  } else {
-    toast.error("Failed to delete");
-  }
-} catch {
-  toast.error("Network error");
-}
+      console.log("Deleting category:", id, "| JWT:", jwt ? "✅ Found" : "❌ Missing");
+
+      const res = await axios.delete(`${BASE_URL}/${id}`, {
+        headers: { Authorization: `Bearer ${jwt}` },
+        withCredentials: true,
+      });
+
+      console.log("Delete response:", res.data);
+
+      if (res.status === 204 || res.status === 200) {
+        toast({
+          title: "✅ Deleted",
+          description: "Category deleted successfully.",
+          variant: "success",
+        });
+        fetchCategories();
+      } else {
+        toast({
+          title: "❌ Failed",
+          description: res.data?.message || "Could not delete category.",
+          variant: "destructive",
+        });
+      }
+    } catch (err: any) {
+      console.error("Error deleting category:", err);
+      toast({
+        title: "⚠️ Network Error",
+        description:
+          err.response?.data?.message || "Something went wrong. Check console.",
+        variant: "destructive",
+      });
+    }
   };
 
   useEffect(() => {
@@ -68,9 +96,9 @@ try {
   }, []);
 
   return (
-    <Card>
+    <Card className="bg-blue-50">
       <CardHeader>
-        <CardTitle>All Categories</CardTitle>
+        <CardTitle className="text-blue-700">All Categories</CardTitle>
       </CardHeader>
       <CardContent>
         <div className="space-y-3">
@@ -80,11 +108,11 @@ try {
             categories.map((cat) => (
               <div
                 key={cat._id}
-                className="flex justify-between items-center p-3 border rounded-lg"
+                className="flex justify-between items-center p-3 border rounded-lg bg-blue-100 hover:bg-blue-200 transition-colors"
               >
                 <div>
-                  <p className="font-medium">{cat.name}</p>
-                  <p className="text-sm text-gray-500">{cat.description}</p>
+                  <p className="font-medium text-blue-900">{cat.name}</p>
+                  <p className="text-sm text-blue-800">{cat.description}</p>
                 </div>
                 <div className="space-x-2">
                   <Button
@@ -108,6 +136,9 @@ try {
             ))
           )}
         </div>
+
+        {/* ✅ Toast container */}
+        <Toaster />
       </CardContent>
     </Card>
   );
