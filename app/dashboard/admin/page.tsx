@@ -2,77 +2,146 @@
 
 import { useEffect, useState } from "react";
 import { DashboardCard } from "@/components/dashboard/DashboardCard";
-import { Users, Pill, BarChart3, List } from "lucide-react";
+import { Users, Pill, BarChart3, List, Boxes, Syringe, Package } from "lucide-react"; 
 import axios from "axios";
 import { useRouter } from "next/navigation";
 import { useToast } from "@/components/ui/use-toast";
 import { Toaster } from "@/components/ui/toaster";
 
-// Types
-interface Category {
-  _id: string;
-  name: string;
-  description: string;
-}
+interface Category { _id: string; name: string; }
+interface Generic { _id: string; name: string; }
+interface Dosage { _id: string; name: string; }
+interface UOM { _id: string; name: string; }
+interface User { _id: string; name: string; email: string; } // ✅ Users interface
 
 export default function AdminDashboard() {
   const { toast } = useToast();
   const router = useRouter();
 
   const [categories, setCategories] = useState<Category[]>([]);
+  const [generics, setGenerics] = useState<Generic[]>([]);
+  const [dosages, setDosages] = useState<Dosage[]>([]);
+  const [units, setUoms] = useState<UOM[]>([]);
+  const [users, setUsers] = useState<User[]>([]); // ✅ Users state
   const [jwt, setJwt] = useState<string | null>(null);
 
-  const BASE_URL = "https://pharmacy-management-9ls6.onrender.com/api/v1/category";
+  const CATEGORY_URL = "https://pharmacy-management-9ls6.onrender.com/api/v1/categories";
+  const GENERIC_URL = "https://pharmacy-management-9ls6.onrender.com/api/v1/generics";
+  const DOSAGE_URL = "https://pharmacy-management-9ls6.onrender.com/api/v1/dosages";
+  const UOM_URL = "https://pharmacy-management-9ls6.onrender.com/api/v1/UOM";
+  const USERS_URL = "https://pharmacy-management-9ls6.onrender.com/api/v1/users"; // ✅ Users API
 
-  // Load JWT from cookies
+  // ✅ Load JWT from cookies
   useEffect(() => {
     const getCookie = (name: string) => {
-      const matches = document.cookie.match(
-        new RegExp("(?:^|; )" + name.replace(/([\.$?*|{}\(\)\[\]\\\/\+^])/g, "\\$1") + "=([^;]*)")
-      );
-      return matches ? decodeURIComponent(matches[1]) : undefined;
+      const cookies = document.cookie ? document.cookie.split("; ") : [];
+      for (const cookie of cookies) {
+        const [key, ...rest] = cookie.split("=");
+        if (key === name) return decodeURIComponent(rest.join("="));
+      }
+      return undefined;
     };
-
     setJwt(getCookie("jwt") || null);
   }, []);
 
-  // Fetch categories to get count
+  // ✅ Fetch categories
   const fetchCategories = async () => {
     if (!jwt) return;
     try {
-      const res = await axios.get(BASE_URL, { headers: { Authorization: `Bearer ${jwt}` } });
+      const res = await axios.get(CATEGORY_URL, { headers: { Authorization: `Bearer ${jwt}` } });
       setCategories(res.data.data.categories || []);
-    } catch (err) {
+    } catch {
       toast({ title: "❌ Error", description: "Failed to fetch categories", variant: "destructive" });
     }
   };
 
+  // ✅ Fetch generics
+  const fetchGenerics = async () => {
+    if (!jwt) return;
+    try {
+      const res = await axios.get(GENERIC_URL, { headers: { Authorization: `Bearer ${jwt}` } });
+      setGenerics(res.data.data.generics || []);
+    } catch {
+      toast({ title: "⚠️ Error", description: "Failed to fetch generics", variant: "destructive" });
+    }
+  };
+
+  // ✅ Fetch dosages
+  const fetchDosages = async () => {
+    if (!jwt) return;
+    try {
+      const res = await axios.get(DOSAGE_URL, { headers: { Authorization: `Bearer ${jwt}` } });
+      setDosages(res.data.data.dosages || []);
+    } catch {
+      toast({ title: "⚠️ Error", description: "Failed to fetch dosages", variant: "destructive" });
+    }
+  };
+
+  // ✅ Fetch UOMs
+  const fetchUOMs = async () => {
+    if (!jwt) return;
+    try {
+      const res = await axios.get(UOM_URL, { headers: { Authorization: `Bearer ${jwt}` } });
+      setUoms(res.data.data.units || []);
+    } catch {
+      toast({ title: "⚠️ Error", description: "Failed to fetch UOMs", variant: "destructive" });
+    }
+  };
+
+  // ✅ Fetch Users
+  const fetchUsers = async () => {
+    if (!jwt) return;
+    try {
+      const res = await axios.get(USERS_URL, { headers: { Authorization: `Bearer ${jwt}` } });
+      setUsers(res.data.data.users || []);
+    } catch {
+      toast({ title: "⚠️ Error", description: "Failed to fetch users", variant: "destructive" });
+    }
+  };
+
   useEffect(() => {
-    fetchCategories();
+    if (jwt) {
+      fetchCategories();
+      fetchGenerics();
+      fetchDosages();
+      fetchUOMs();
+      fetchUsers(); // ✅ Fetch Users
+    }
   }, [jwt]);
 
   return (
     <div className="space-y-6 p-6">
       <Toaster />
-
       <h1 className="text-2xl font-semibold text-blue-700">Admin Dashboard</h1>
 
-      {/* Dashboard cards */}
+      {/* ✅ Dashboard cards */}
       <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
-        <DashboardCard title="Total Users" value="12" icon={Users} />
+        {/* Users */}
+        <div onClick={() => router.push("/dashboard/admin/users")} className="cursor-pointer hover:shadow-lg transition">
+          <DashboardCard title="Users" value={users.length.toString()} icon={Users} />
+        </div>
+
         <DashboardCard title="Medicines in Stock" value="234" icon={Pill} />
         <DashboardCard title="Weekly Sales" value="$4,520" icon={BarChart3} />
 
-        {/* Categories card: shows count and navigates on click */}
-        <div
-          onClick={() => router.push("/dashboard/admin/categories")}
-          className="cursor-pointer hover:shadow-lg transition"
-        >
-          <DashboardCard
-            title="Categories"
-            value={categories.length.toString()} // shows number of categories
-            icon={List}
-          />
+        {/* Categories */}
+        <div onClick={() => router.push("/dashboard/admin/categories")} className="cursor-pointer hover:shadow-lg transition">
+          <DashboardCard title="Categories" value={categories.length.toString()} icon={List} />
+        </div>
+
+        {/* Generics */}
+        <div onClick={() => router.push("/dashboard/admin/generics")} className="cursor-pointer hover:shadow-lg transition">
+          <DashboardCard title="Generics" value={generics.length.toString()} icon={Boxes} />
+        </div>
+
+        {/* Dosages */}
+        <div onClick={() => router.push("/dashboard/admin/dosages")} className="cursor-pointer hover:shadow-lg transition">
+          <DashboardCard title="Dosages" value={dosages.length.toString()} icon={Syringe} />
+        </div>
+
+        {/* UOMs */}
+        <div onClick={() => router.push("/dashboard/admin/UOM")} className="cursor-pointer hover:shadow-lg transition">
+          <DashboardCard title="UOMs" value={units.length.toString()} icon={Package} />
         </div>
       </div>
     </div>

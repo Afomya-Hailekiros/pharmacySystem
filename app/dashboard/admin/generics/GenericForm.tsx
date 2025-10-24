@@ -8,42 +8,36 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { useToast } from "@/components/ui/use-toast";
 import { Toaster } from "@/components/ui/toaster";
 
-export default function CategoryForm({ categoryId }: { categoryId?: string }) {
+export default function GenericForm({ genericId }: { genericId?: string }) {
   const [name, setName] = useState("");
   const [description, setDescription] = useState("");
   const [loading, setLoading] = useState(false);
   const { toast } = useToast();
 
-  const BASE_URL = "https://pharmacy-management-9ls6.onrender.com/api/v1/categories";
+  const BASE_URL = "https://pharmacy-management-9ls6.onrender.com/api/v1/generics";
 
-  // ✅ Fetch category if editing
   useEffect(() => {
-    if (categoryId) {
-      console.log("Fetching category with ID:", categoryId);
+    if (genericId) {
       axios
-        .get(`${BASE_URL}/${categoryId}`, { withCredentials: true })
+        .get(`${BASE_URL}/${genericId}`, { withCredentials: true })
         .then((res) => {
-          console.log("Fetched category data:", res.data);
-          const cat = res.data?.data?.category;
-          setName(cat?.name || "");
-          setDescription(cat?.description || "");
+          const gen = res.data?.data?.generic;
+          setName(gen?.name || "");
+          setDescription(gen?.description || "");
         })
         .catch((err) => {
-          console.error("Error fetching category:", err);
           toast({
-            title: "⚠️ Failed to load category",
-            description: err.response?.data?.message || "Error loading category",
+            title: "⚠️ Failed to load generic",
+            description: err.response?.data?.message || "Error loading generic",
             variant: "destructive",
           });
         });
     }
-  }, [categoryId]);
+  }, [genericId]);
 
-  // ✅ Submit handler
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setLoading(true);
-    console.log("Submitting category form...");
 
     try {
       const jwt = document.cookie
@@ -51,10 +45,8 @@ export default function CategoryForm({ categoryId }: { categoryId?: string }) {
         .find((row) => row.startsWith("jwt="))
         ?.split("=")[1];
 
-      console.log("Extracted JWT:", jwt ? "✅ Found token" : "❌ No token");
-
-      const method = categoryId ? "patch" : "post";
-      const url = categoryId ? `${BASE_URL}/${categoryId}` : BASE_URL;
+      const method = genericId ? "patch" : "post";
+      const url = genericId ? `${BASE_URL}/${genericId}` : BASE_URL;
 
       const res = await axios({
         method,
@@ -64,14 +56,12 @@ export default function CategoryForm({ categoryId }: { categoryId?: string }) {
         withCredentials: true,
       });
 
-      console.log("Category response:", res.data);
-
       if (res.status === 200 || res.status === 201) {
         toast({
           title: "✅ Success",
-          description: categoryId
-            ? "Category updated successfully!"
-            : "Category created successfully!",
+          description: genericId
+            ? "Generic updated successfully!"
+            : "Generic created successfully!",
           variant: "success",
         });
         setName("");
@@ -84,9 +74,8 @@ export default function CategoryForm({ categoryId }: { categoryId?: string }) {
         });
       }
     } catch (err: any) {
-      console.error("Category form error:", err);
       toast({
-        title: "⚠️ Network or Auth Error",
+        title: "⚠️ Error",
         description:
           err.response?.data?.message || "Something went wrong. Check console.",
         variant: "destructive",
@@ -99,20 +88,18 @@ export default function CategoryForm({ categoryId }: { categoryId?: string }) {
   return (
     <Card className="max-w-md shadow-md">
       <CardHeader>
-        <CardTitle>
-          {categoryId ? "Edit Category" : "Add Category"}
-        </CardTitle>
+        <CardTitle>{genericId ? "Edit Generic" : "Add Generic"}</CardTitle>
       </CardHeader>
       <CardContent>
         <form onSubmit={handleSubmit} className="space-y-4">
           <div>
             <label className="block text-sm font-medium text-gray-700">
-              Category Name
+              Generic Name
             </label>
             <Input
               value={name}
               onChange={(e) => setName(e.target.value)}
-              placeholder="e.g., Antibiotic"
+              placeholder="e.g., Amoxicillin"
               required
             />
           </div>
@@ -129,13 +116,11 @@ export default function CategoryForm({ categoryId }: { categoryId?: string }) {
           <Button type="submit" disabled={loading} className="w-full">
             {loading
               ? "Saving..."
-              : categoryId
-              ? "Update Category"
-              : "Create Category"}
+              : genericId
+              ? "Update Generic"
+              : "Create Generic"}
           </Button>
         </form>
-
-        {/* ✅ Toast Container */}
         <Toaster />
       </CardContent>
     </Card>

@@ -7,38 +7,38 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { useToast } from "@/components/ui/use-toast";
 import { Toaster } from "@/components/ui/toaster";
 
-export default function CategoryList() {
-  const [categories, setCategories] = useState<any[]>([]);
+export default function UOMList() {
+  const [uoms, setUoms] = useState<any[]>([]);
   const { toast } = useToast();
-  const BASE_URL = "https://pharmacy-management-9ls6.onrender.com/api/v1/categories";
+  const BASE_URL = "https://pharmacy-management-9ls6.onrender.com/api/v1/UOM";
 
-  const fetchCategories = async () => {
+  const fetchUOMs = async () => {
     try {
       const jwt = document.cookie
         .split("; ")
         .find((row) => row.startsWith("jwt="))
         ?.split("=")[1];
 
-      console.log("Fetching categories... JWT:", jwt ? "✅ Found" : "❌ Missing");
+      console.log("Fetching UOMs... JWT:", jwt ? "✅ Found" : "❌ Missing");
 
       const res = await axios.get(BASE_URL, {
         headers: { Authorization: `Bearer ${jwt}` },
         withCredentials: true,
       });
 
-      console.log("Fetched categories:", res.data);
+      console.log("Fetched UOMs:", res.data);
 
-      if (res.status === 200 && res.data?.data?.categories) {
-        setCategories(res.data.data.categories);
+      if (res.status === 200 && res.data?.data?.units) {
+        setUoms(res.data.data.units);
       } else {
         toast({
           title: "❌ Failed",
-          description: res.data?.message || "Failed to load categories",
+          description: res.data?.message || "Failed to load UOMs",
           variant: "destructive",
         });
       }
     } catch (err: any) {
-      console.error("Error fetching categories:", err);
+      console.error("Error fetching UOMs:", err);
       toast({
         title: "⚠️ Error",
         description:
@@ -49,7 +49,7 @@ export default function CategoryList() {
   };
 
   const handleDelete = async (id: string) => {
-    if (!confirm("Are you sure you want to delete this category?")) return;
+    if (!confirm("Are you sure you want to delete this UOM?")) return;
 
     try {
       const jwt = document.cookie
@@ -57,7 +57,7 @@ export default function CategoryList() {
         .find((row) => row.startsWith("jwt="))
         ?.split("=")[1];
 
-      console.log("Deleting category:", id, "| JWT:", jwt ? "✅ Found" : "❌ Missing");
+      console.log("Deleting UOM:", id, "| JWT:", jwt ? "✅ Found" : "❌ Missing");
 
       const res = await axios.delete(`${BASE_URL}/${id}`, {
         headers: { Authorization: `Bearer ${jwt}` },
@@ -69,19 +69,19 @@ export default function CategoryList() {
       if (res.status === 204 || res.status === 200) {
         toast({
           title: "✅ Deleted",
-          description: "Category deleted successfully.",
+          description: "UOM deleted successfully.",
           variant: "success",
         });
-        fetchCategories();
+        fetchUOMs();
       } else {
         toast({
           title: "❌ Failed",
-          description: res.data?.message || "Could not delete category.",
+          description: res.data?.message || "Could not delete UOM.",
           variant: "destructive",
         });
       }
     } catch (err: any) {
-      console.error("Error deleting category:", err);
+      console.error("Error deleting UOM:", err);
       toast({
         title: "⚠️ Network Error",
         description:
@@ -92,34 +92,34 @@ export default function CategoryList() {
   };
 
   useEffect(() => {
-    fetchCategories();
+    fetchUOMs();
   }, []);
 
   return (
     <Card className="bg-blue-50">
       <CardHeader>
-        <CardTitle className="text-blue-700">All Categories</CardTitle>
+        <CardTitle className="text-blue-700">All Units of Measurement (UOMs)</CardTitle>
       </CardHeader>
       <CardContent>
         <div className="space-y-3">
-          {categories.length === 0 ? (
-            <p className="text-gray-500">No categories found.</p>
+          {uoms.length === 0 ? (
+            <p className="text-gray-500">No UOMs found.</p>
           ) : (
-            categories.map((cat) => (
+            uoms.map((uom) => (
               <div
-                key={cat._id}
+                key={uom._id}
                 className="flex justify-between items-center p-3 border rounded-lg bg-blue-100 hover:bg-blue-200 transition-colors"
               >
                 <div>
-                  <p className="font-medium text-blue-900">{cat.name}</p>
-                  <p className="text-sm text-blue-800">{cat.description}</p>
+                  <p className="font-medium text-blue-900">{uom.name}</p>
+                  <p className="text-sm text-blue-800">{uom.description}</p>
                 </div>
                 <div className="space-x-2">
                   <Button
                     variant="outline"
                     size="sm"
                     onClick={() =>
-                      (window.location.href = `/dashboard/admin/categories?edit=${cat._id}`)
+                      (window.location.href = `/dashboard/admin/UOM?edit=${uom._id}`)
                     }
                   >
                     Edit
@@ -127,7 +127,7 @@ export default function CategoryList() {
                   <Button
                     variant="destructive"
                     size="sm"
-                    onClick={() => handleDelete(cat._id)}
+                    onClick={() => handleDelete(uom._id)}
                   >
                     Delete
                   </Button>

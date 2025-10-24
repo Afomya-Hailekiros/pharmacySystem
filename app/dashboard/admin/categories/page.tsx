@@ -26,7 +26,7 @@ export default function CategoriesPage() {
   const [editId, setEditId] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
 
-  const BASE_URL = "https://pharmacy-management-9ls6.onrender.com/api/v1/category";
+  const BASE_URL = "https://pharmacy-management-9ls6.onrender.com/api/v1/categories";
 
   // Load JWT from cookies
   useEffect(() => {
