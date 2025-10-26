@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { DashboardCard } from "@/components/dashboard/DashboardCard";
-import { Users, Pill, BarChart3, List, Boxes, Syringe, Package } from "lucide-react"; 
+import { Users, Pill, BarChart3, List, Boxes, Syringe, Package, FlaskConical } from "lucide-react";
 import axios from "axios";
 import { useRouter } from "next/navigation";
 import { useToast } from "@/components/ui/use-toast";
@@ -12,7 +12,8 @@ interface Category { _id: string; name: string; }
 interface Generic { _id: string; name: string; }
 interface Dosage { _id: string; name: string; }
 interface UOM { _id: string; name: string; }
-interface User { _id: string; name: string; email: string; } // ✅ Users interface
+interface User { _id: string; name: string; email: string; }
+interface Medicine { _id: string; name: string; }
 
 export default function AdminDashboard() {
   const { toast } = useToast();
@@ -22,14 +23,17 @@ export default function AdminDashboard() {
   const [generics, setGenerics] = useState<Generic[]>([]);
   const [dosages, setDosages] = useState<Dosage[]>([]);
   const [units, setUoms] = useState<UOM[]>([]);
-  const [users, setUsers] = useState<User[]>([]); // ✅ Users state
+  const [users, setUsers] = useState<User[]>([]);
+  const [medicines, setMedicines] = useState<Medicine[]>([]);
   const [jwt, setJwt] = useState<string | null>(null);
 
+  // ✅ API URLs
   const CATEGORY_URL = "https://pharmacy-management-9ls6.onrender.com/api/v1/categories";
   const GENERIC_URL = "https://pharmacy-management-9ls6.onrender.com/api/v1/generics";
   const DOSAGE_URL = "https://pharmacy-management-9ls6.onrender.com/api/v1/dosages";
-  const UOM_URL = "https://pharmacy-management-9ls6.onrender.com/api/v1/UOM";
-  const USERS_URL = "https://pharmacy-management-9ls6.onrender.com/api/v1/users"; // ✅ Users API
+  const UOM_URL = "https://pharmacy-management-9ls6.onrender.com/api/v1/UOMs";
+  const USERS_URL = "https://pharmacy-management-9ls6.onrender.com/api/v1/users";
+  const MEDICINES_URL = "https://pharmacy-management-9ls6.onrender.com/api/v1/medicines";
 
   // ✅ Load JWT from cookies
   useEffect(() => {
@@ -99,13 +103,25 @@ export default function AdminDashboard() {
     }
   };
 
+  // ✅ Fetch Medicines
+  const fetchMedicines = async () => {
+    if (!jwt) return;
+    try {
+      const res = await axios.get(MEDICINES_URL, { headers: { Authorization: `Bearer ${jwt}` } });
+      setMedicines(res.data.data.medicines || []);
+    } catch {
+      toast({ title: "⚠️ Error", description: "Failed to fetch medicines", variant: "destructive" });
+    }
+  };
+
   useEffect(() => {
     if (jwt) {
       fetchCategories();
       fetchGenerics();
       fetchDosages();
       fetchUOMs();
-      fetchUsers(); // ✅ Fetch Users
+      fetchUsers();
+      fetchMedicines(); // ✅ Fetch medicines
     }
   }, [jwt]);
 
@@ -121,8 +137,12 @@ export default function AdminDashboard() {
           <DashboardCard title="Users" value={users.length.toString()} icon={Users} />
         </div>
 
-        <DashboardCard title="Medicines in Stock" value="234" icon={Pill} />
-        <DashboardCard title="Weekly Sales" value="$4,520" icon={BarChart3} />
+        {/* Medicines */}
+        {/* Medicines */}
+       <div onClick={() => router.push("/dashboard/admin/medicines")} className="cursor-pointer hover:shadow-lg transition">
+         <DashboardCard title="Medicines" value={medicines.length.toString()} icon={FlaskConical} />
+       </div>
+
 
         {/* Categories */}
         <div onClick={() => router.push("/dashboard/admin/categories")} className="cursor-pointer hover:shadow-lg transition">

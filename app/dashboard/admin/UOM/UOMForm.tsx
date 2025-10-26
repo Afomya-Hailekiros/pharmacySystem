@@ -11,7 +11,7 @@ export const UOMForm = ({ onSuccess }: { onSuccess: () => void }) => {
   const [name, setName] = useState("");
   const [jwt, setJwt] = useState<string | null>(null);
 
-  const UOM_URL = "https://pharmacy-management-9ls6.onrender.com/api/v1/UOM";
+  const UOM_URL = "https://pharmacy-management-9ls6.onrender.com/api/v1/UOMs";
 
   useEffect(() => {
     const getCookie = (name: string) => {

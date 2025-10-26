@@ -26,7 +26,7 @@ export default function UOMPage() {
   const [editId, setEditId] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
 
-  const BASE_URL = "https://pharmacy-management-9ls6.onrender.com/api/v1/UOM";
+  const BASE_URL = "https://pharmacy-management-9ls6.onrender.com/api/v1/UOMs";
 
   // ✅ Load JWT from cookies
   useEffect(() => {

@@ -10,7 +10,7 @@ import { Toaster } from "@/components/ui/toaster";
 export default function UOMList() {
   const [uoms, setUoms] = useState<any[]>([]);
   const { toast } = useToast();
-  const BASE_URL = "https://pharmacy-management-9ls6.onrender.com/api/v1/UOM";
+  const BASE_URL = "https://pharmacy-management-9ls6.onrender.com/api/v1/UOMs";
 
   const fetchUOMs = async () => {
     try {
