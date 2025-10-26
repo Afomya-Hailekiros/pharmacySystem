@@ -2,19 +2,18 @@
 
 import { useEffect, useState } from "react";
 import axios from "axios";
-import { Input } from "@/components/ui/input";
-import { Button } from "@/components/ui/button";
-import { Label } from "@/components/ui/label";
+import { motion, AnimatePresence } from "framer-motion";
 import { useToast } from "@/components/ui/use-toast";
 import { Toaster } from "@/components/ui/toaster";
-import { Card, CardContent } from "@/components/ui/card";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
 import Select from "react-select";
+import {
+  PlusCircle,
+  Pill,
+  Search,
+} from "lucide-react";
 import { useSearchParams, useRouter } from "next/navigation";
-
-interface Option {
-  _id: string;
-  name: string;
-}
 
 interface MedicineType {
   _id: string;
@@ -23,26 +22,39 @@ interface MedicineType {
   generic: string;
   dosage: string;
   unit: string;
-  origin?: string;
-  itemStrength?: string;
-  packSize?: string;
   batchNo: string;
   expiryDate?: string;
   quantity: number;
   unitPrice: number;
+  stockAlert?: number;
+  packSize?: string;
+  itemStrength?: string;
+  origin?: string;
+  categoryInfo?: { name: string };
+  genericInfo?: { name: string };
 }
 
-export default function MedicineForm() {
+interface Option {
+  _id: string;
+  name: string;
+}
+
+export default function MedicinesDashboard() {
   const { toast } = useToast();
-  const searchParams = useSearchParams();
   const router = useRouter();
+  const searchParams = useSearchParams();
+
   const [jwt, setJwt] = useState<string | null>(null);
+  const [medicines, setMedicines] = useState<MedicineType[]>([]);
+  const [filtered, setFiltered] = useState<MedicineType[]>([]);
+  const [searchTerm, setSearchTerm] = useState("");
+  const [showModal, setShowModal] = useState(false);
+  const [selectedMedicine, setSelectedMedicine] = useState<MedicineType | null>(null);
 
   const [categories, setCategories] = useState<Option[]>([]);
   const [generics, setGenerics] = useState<Option[]>([]);
   const [dosages, setDosages] = useState<Option[]>([]);
   const [uoms, setUoms] = useState<Option[]>([]);
-  const [selectedMedicine, setSelectedMedicine] = useState<MedicineType | null>(null);
 
   const [form, setForm] = useState({
     category: "",
@@ -50,22 +62,22 @@ export default function MedicineForm() {
     brandName: "",
     dosage: "",
     unit: "",
-    origin: "",
-    itemStrength: "",
-    packSize: "",
     batchNo: "",
     expiryDate: "",
     quantity: "",
     unitPrice: "",
+    stockAlert: "",
+    packSize: "",
+    itemStrength: "",
+    origin: "",
   });
 
+  const MEDICINE_URL = "https://pharmacy-management-9ls6.onrender.com/api/v1/medicines";
   const CATEGORY_URL = "https://pharmacy-management-9ls6.onrender.com/api/v1/categories";
   const GENERIC_URL = "https://pharmacy-management-9ls6.onrender.com/api/v1/generics";
   const DOSAGE_URL = "https://pharmacy-management-9ls6.onrender.com/api/v1/dosages";
   const UOM_URL = "https://pharmacy-management-9ls6.onrender.com/api/v1/UOMs";
-  const MEDICINE_URL = "https://pharmacy-management-9ls6.onrender.com/api/v1/medicines";
 
-  // ✅ react-select custom styles
   const customStyles = {
     control: (provided: any, state: any) => ({
       ...provided,
@@ -88,20 +100,18 @@ export default function MedicineForm() {
     singleValue: (provided: any) => ({ ...provided, color: "black" }),
   };
 
-  // ✅ Load JWT from cookie
   useEffect(() => {
     const getCookie = (name: string) => {
       const cookies = document.cookie.split("; ");
       for (const cookie of cookies) {
-        const [key, value] = cookie.split("=");
-        if (key === name) return decodeURIComponent(value);
+        const [key, ...rest] = cookie.split("=");
+        if (key === name) return decodeURIComponent(rest.join("="));
       }
       return undefined;
     };
     setJwt(getCookie("jwt") || null);
   }, []);
 
-  // ✅ Fetch dropdown data
   const fetchDropdowns = async () => {
     if (!jwt) return;
     try {
@@ -116,62 +126,60 @@ export default function MedicineForm() {
       setDosages(dos.data.data.dosages || []);
       setUoms(uo.data.data.units || []);
     } catch {
-      toast({
-        title: "❌ Error",
-        description: "Failed to load dropdown data.",
-        variant: "destructive",
-      });
+      toast({ title: "❌ Error", description: "Failed to load dropdowns", variant: "destructive" });
+    }
+  };
+
+  const fetchMedicines = async () => {
+    if (!jwt) return;
+    try {
+      const res = await axios.get(MEDICINE_URL, { headers: { Authorization: `Bearer ${jwt}` } });
+      setMedicines(res.data.data || []);
+      setFiltered(res.data.data || []);
+    } catch {
+      toast({ title: "⚠️ Error", description: "Failed to fetch medicines.", variant: "destructive" });
     }
   };
 
   useEffect(() => {
-    if (jwt) fetchDropdowns();
+    if (jwt) {
+      fetchDropdowns();
+      fetchMedicines();
+    }
   }, [jwt]);
 
-  // ✅ If editing (from URL param)
-  useEffect(() => {
-    const id = searchParams.get("id");
-    if (!id || !jwt) return;
-    (async () => {
-      try {
-        const res = await axios.get(`${MEDICINE_URL}/${id}`, {
-          headers: { Authorization: `Bearer ${jwt}` },
-        });
-        const med = res.data.data;
-        setSelectedMedicine(med);
-        setForm({
-          category: med.category,
-          generic: med.generic,
-          brandName: med.brandName,
-          dosage: med.dosage,
-          unit: med.unit,
-          origin: med.origin || "",
-          itemStrength: med.itemStrength || "",
-          packSize: med.packSize || "",
-          batchNo: med.batchNo,
-          expiryDate: med.expiryDate || "",
-          quantity: med.quantity.toString(),
-          unitPrice: med.unitPrice.toString(),
-        });
-      } catch {
-        toast({
-          title: "❌ Error",
-          description: "Failed to load medicine details.",
-          variant: "destructive",
-        });
-      }
-    })();
-  }, [searchParams, jwt]);
-
+  const mapOptions = (arr: Option[]) => arr.map((o) => ({ value: o._id, label: o.name }));
   const handleChange = (name: string, value: any) => setForm({ ...form, [name]: value });
+
+  const handleAddMedicine = () => {
+    setSelectedMedicine(null);
+    setForm({
+      category: "",
+      generic: "",
+      brandName: "",
+      dosage: "",
+      unit: "",
+      batchNo: "",
+      expiryDate: "",
+      quantity: "",
+      unitPrice: "",
+      stockAlert: "",
+      packSize: "",
+      itemStrength: "",
+      origin: "",
+    });
+    setShowModal(true);
+  };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!jwt) return;
+
     const payload = {
       ...form,
       quantity: parseInt(form.quantity),
       unitPrice: parseFloat(form.unitPrice),
+      stockAlert: parseInt(form.stockAlert),
     };
 
     try {
@@ -186,173 +194,210 @@ export default function MedicineForm() {
         });
         toast({ title: "✅ Medicine added successfully!" });
       }
-      router.push("/dashboard/admin/medicines");
+      setShowModal(false);
+      fetchMedicines();
     } catch {
       toast({ title: "❌ Failed to save medicine", variant: "destructive" });
     }
   };
 
-  const mapOptions = (arr: Option[]) => arr.map((o) => ({ value: o._id, label: o.name }));
+  useEffect(() => {
+    if (!searchTerm.trim()) return setFiltered(medicines);
+    const lower = searchTerm.toLowerCase();
+    setFiltered(
+      medicines.filter(
+        (m) =>
+          m.brandName?.toLowerCase().includes(lower) ||
+          m.genericInfo?.name?.toLowerCase().includes(lower) ||
+          m.categoryInfo?.name?.toLowerCase().includes(lower)
+      )
+    );
+  }, [searchTerm, medicines]);
 
   return (
-    <Card className="max-w-3xl mx-auto mt-10 shadow-xl rounded-2xl border border-gray-200 bg-white px-4 sm:px-8">
-      <CardContent className="p-6 sm:p-8 bg-white">
-        <Toaster />
-        <h2 className="text-3xl font-semibold mb-8 text-blue-700 text-center">
-          {selectedMedicine ? "Edit Medicine" : "Add New Medicine"}
-        </h2>
+    <div className="space-y-8 p-6 min-h-screen bg-gradient-to-br from-blue-50 to-indigo-100 text-black">
+      <Toaster />
 
-        {/* ✅ Medicine Form */}
-        <form onSubmit={handleSubmit} className="grid grid-cols-1 md:grid-cols-2 gap-4">
-          {/* Category */}
-          <div>
-            <Label className="text-gray-700 font-medium">Category</Label>
-            <Select
-              styles={customStyles}
-              options={mapOptions(categories)}
-              value={mapOptions(categories).find((o) => o.value === form.category) || null}
-              onChange={(option: any) => handleChange("category", option?.value || "")}
-              placeholder="Select category"
-              isClearable
-            />
-          </div>
+      {/* Header */}
+      <motion.div
+        className="flex flex-col sm:flex-row justify-between items-center gap-4 bg-white p-4 rounded-xl shadow-md"
+        initial={{ opacity: 0, y: -20 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ duration: 0.5 }}
+      >
+        <h1 className="text-3xl font-bold text-blue-700 flex items-center gap-2">
+          <Pill className="h-7 w-7 text-blue-600" /> Medicines Dashboard
+        </h1>
+        <Button
+          onClick={handleAddMedicine}
+          className="bg-blue-600 hover:bg-blue-700 text-white font-semibold shadow-lg flex items-center gap-2"
+        >
+          <PlusCircle className="h-5 w-5" /> Add Medicine
+        </Button>
+      </motion.div>
 
-          {/* Generic */}
-          <div>
-            <Label className="text-gray-700 font-medium">Generic</Label>
-            <Select
-              styles={customStyles}
-              options={mapOptions(generics)}
-              value={mapOptions(generics).find((o) => o.value === form.generic) || null}
-              onChange={(option: any) => handleChange("generic", option?.value || "")}
-              placeholder="Select generic"
-              isClearable
-            />
-          </div>
+      {/* Search */}
+      <motion.div className="flex flex-col md:flex-row gap-4 justify-between items-center bg-white p-4 rounded-xl shadow-sm">
+        <div className="relative flex-1 min-w-[250px]">
+          <Search className="absolute left-3 top-3 text-gray-500 h-4 w-4" />
+          <Input
+            placeholder="Search by brand, category, or generic..."
+            value={searchTerm}
+            onChange={(e) => setSearchTerm(e.target.value)}
+            className="pl-9 border-blue-200 focus:ring-blue-400 text-black"
+          />
+        </div>
+      </motion.div>
 
-          {/* Brand Name */}
-          <div>
-            <Label className="text-gray-700 font-medium">Brand Name</Label>
-            <Input
-              name="brandName"
-              value={form.brandName}
-              onChange={(e) => handleChange("brandName", e.target.value)}
-              required
-            />
-          </div>
-
-          {/* Dosage */}
-          <div>
-            <Label className="text-gray-700 font-medium">Dosage</Label>
-            <Select
-              styles={customStyles}
-              options={mapOptions(dosages)}
-              value={mapOptions(dosages).find((o) => o.value === form.dosage) || null}
-              onChange={(option: any) => handleChange("dosage", option?.value || "")}
-              placeholder="Select dosage"
-              isClearable
-            />
-          </div>
-
-          {/* Unit */}
-          <div>
-            <Label className="text-gray-700 font-medium">Unit of Measure</Label>
-            <Select
-              styles={customStyles}
-              options={mapOptions(uoms)}
-              value={mapOptions(uoms).find((o) => o.value === form.unit) || null}
-              onChange={(option: any) => handleChange("unit", option?.value || "")}
-              placeholder="Select unit"
-              isClearable
-            />
-          </div>
-
-          {/* Origin */}
-          <div>
-            <Label className="text-gray-700 font-medium">Origin</Label>
-            <Input
-              name="origin"
-              value={form.origin}
-              onChange={(e) => handleChange("origin", e.target.value)}
-            />
-          </div>
-
-          {/* Item Strength */}
-          <div>
-            <Label className="text-gray-700 font-medium">Item Strength</Label>
-            <Input
-              name="itemStrength"
-              value={form.itemStrength}
-              onChange={(e) => handleChange("itemStrength", e.target.value)}
-            />
-          </div>
-
-          {/* Pack Size */}
-          <div>
-            <Label className="text-gray-700 font-medium">Pack Size</Label>
-            <Input
-              name="packSize"
-              value={form.packSize}
-              onChange={(e) => handleChange("packSize", e.target.value)}
-            />
-          </div>
-
-          {/* Batch No */}
-          <div>
-            <Label className="text-gray-700 font-medium">Batch No</Label>
-            <Input
-              name="batchNo"
-              value={form.batchNo}
-              onChange={(e) => handleChange("batchNo", e.target.value)}
-              required
-            />
-          </div>
-
-          {/* Expiry Date */}
-          <div>
-            <Label className="text-gray-700 font-medium">Expiry Date</Label>
-            <Input
-              type="date"
-              name="expiryDate"
-              value={form.expiryDate}
-              onChange={(e) => handleChange("expiryDate", e.target.value)}
-            />
-          </div>
-
-          {/* Quantity */}
-          <div>
-            <Label className="text-gray-700 font-medium">Quantity</Label>
-            <Input
-              type="number"
-              name="quantity"
-              value={form.quantity}
-              onChange={(e) => handleChange("quantity", e.target.value)}
-              required
-            />
-          </div>
-
-          {/* Unit Price */}
-          <div>
-            <Label className="text-gray-700 font-medium">Unit Price</Label>
-            <Input
-              type="number"
-              name="unitPrice"
-              value={form.unitPrice}
-              onChange={(e) => handleChange("unitPrice", e.target.value)}
-            />
-          </div>
-
-          {/* Submit Button */}
-          <div className="col-span-1 md:col-span-2 flex justify-end mt-6">
-            <Button
-              type="submit"
-              className="bg-blue-600 hover:bg-blue-700 text-white px-8 py-2 rounded-lg shadow-md transition"
+      {/* Medicines List */}
+      <motion.div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-4">
+        {filtered.length === 0 ? (
+          <p className="text-gray-500 text-center col-span-full py-6">No medicines found.</p>
+        ) : (
+          filtered.map((med) => (
+            <motion.div
+              key={med._id}
+              layout
+              className="p-4 border rounded-xl bg-gradient-to-br from-white to-blue-50 shadow hover:shadow-lg transition-all duration-200"
             >
-              {selectedMedicine ? "Update Medicine" : "Save Medicine"}
-            </Button>
-          </div>
-        </form>
-      </CardContent>
-    </Card>
+              <div className="flex justify-between items-start mb-2">
+                <div>
+                  <h2 className="font-semibold text-blue-900 text-lg">{med.brandName}</h2>
+                  <p className="text-sm text-blue-800 mt-1">
+                    {med.genericInfo?.name && `Generic: ${med.genericInfo.name}`}
+                    {med.categoryInfo?.name && ` | ${med.categoryInfo.name}`}
+                  </p>
+                </div>
+              </div>
+              <p className="text-sm text-gray-700">
+                Batch: {med.batchNo || "-"} | Qty:{" "}
+                <span className={(med.quantity ?? 0) < (med.stockAlert ?? 50) ? "text-red-600 font-bold" : "text-green-600 font-bold"}>
+                  {med.quantity}
+                </span>{" "}
+                | Pack Size: {med.packSize || "-"}
+              </p>
+              <p className="text-sm text-gray-700">
+                Exp: {med.expiryDate ? new Date(med.expiryDate).toLocaleDateString() : "-"} | Strength: {med.itemStrength || "-"} | Origin: {med.origin || "-"}
+              </p>
+            </motion.div>
+          ))
+        )}
+      </motion.div>
+
+      {/* Modal */}
+      <AnimatePresence>
+        {showModal && (
+          <motion.div
+            className="fixed inset-0 z-50 flex items-start justify-center bg-black/50 overflow-auto p-4"
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+          >
+            <motion.div
+              className="bg-white rounded-2xl shadow-xl w-full max-w-3xl p-6 sm:p-8 mt-20"
+              initial={{ y: -50 }}
+              animate={{ y: 0 }}
+              exit={{ y: -50 }}
+            >
+              <h2 className="text-2xl font-semibold mb-6 text-blue-700 text-center">
+                {selectedMedicine ? "Edit Medicine" : "Add New Medicine"}
+              </h2>
+              <form onSubmit={handleSubmit} className="grid grid-cols-1 md:grid-cols-2 gap-4 text-black">
+                {/* Category, Generic, Brand, Dosage, Unit */}
+                <div>
+                  <label className="block text-gray-800 font-medium mb-1">Category</label>
+                  <Select
+                    styles={customStyles}
+                    options={mapOptions(categories)}
+                    value={mapOptions(categories).find((o) => o.value === form.category) || null}
+                    onChange={(option: any) => handleChange("category", option?.value || "")}
+                    placeholder="Select category"
+                    isClearable
+                  />
+                </div>
+                <div>
+                  <label className="block text-gray-800 font-medium mb-1">Generic</label>
+                  <Select
+                    styles={customStyles}
+                    options={mapOptions(generics)}
+                    value={mapOptions(generics).find((o) => o.value === form.generic) || null}
+                    onChange={(option: any) => handleChange("generic", option?.value || "")}
+                    placeholder="Select generic"
+                    isClearable
+                  />
+                </div>
+                <div>
+                  <label className="block text-gray-800 font-medium mb-1">Brand Name</label>
+                  <Input value={form.brandName} onChange={(e) => handleChange("brandName", e.target.value)} required />
+                </div>
+                <div>
+                  <label className="block text-gray-800 font-medium mb-1">Dosage</label>
+                  <Select
+                    styles={customStyles}
+                    options={mapOptions(dosages)}
+                    value={mapOptions(dosages).find((o) => o.value === form.dosage) || null}
+                    onChange={(option: any) => handleChange("dosage", option?.value || "")}
+                    placeholder="Select dosage"
+                    isClearable
+                  />
+                </div>
+                <div>
+                  <label className="block text-gray-800 font-medium mb-1">Unit</label>
+                  <Select
+                    styles={customStyles}
+                    options={mapOptions(uoms)}
+                    value={mapOptions(uoms).find((o) => o.value === form.unit) || null}
+                    onChange={(option: any) => handleChange("unit", option?.value || "")}
+                    placeholder="Select unit"
+                    isClearable
+                  />
+                </div>
+
+                {/* Batch, Expiry, Quantity, Unit Price, StockAlert */}
+                <div>
+                  <label className="block text-gray-800 font-medium mb-1">Batch No</label>
+                  <Input value={form.batchNo} onChange={(e) => handleChange("batchNo", e.target.value)} required />
+                </div>
+                <div>
+                  <label className="block text-gray-800 font-medium mb-1">Expiry Date</label>
+                  <Input type="date" value={form.expiryDate} onChange={(e) => handleChange("expiryDate", e.target.value)} />
+                </div>
+                <div>
+                  <label className="block text-gray-800 font-medium mb-1">Quantity</label>
+                  <Input type="number" value={form.quantity} onChange={(e) => handleChange("quantity", e.target.value)} required />
+                </div>
+                <div>
+                  <label className="block text-gray-800 font-medium mb-1">Unit Price</label>
+                  <Input type="number" value={form.unitPrice} onChange={(e) => handleChange("unitPrice", e.target.value)} required />
+                </div>
+                <div>
+                  <label className="block text-gray-800 font-medium mb-1">Stock Alert</label>
+                  <Input type="number" value={form.stockAlert} onChange={(e) => handleChange("stockAlert", e.target.value)} required />
+                </div>
+
+                {/* Pack Size, Item Strength, Origin */}
+                <div>
+                  <label className="block text-gray-800 font-medium mb-1">Pack Size</label>
+                  <Input value={form.packSize} onChange={(e) => handleChange("packSize", e.target.value)} />
+                </div>
+                <div>
+                  <label className="block text-gray-800 font-medium mb-1">Item Strength</label>
+                  <Input value={form.itemStrength} onChange={(e) => handleChange("itemStrength", e.target.value)} required />
+                </div>
+                <div>
+                  <label className="block text-gray-800 font-medium mb-1">Origin</label>
+                  <Input value={form.origin} onChange={(e) => handleChange("origin", e.target.value)} required />
+                </div>
+
+                <div className="col-span-1 md:col-span-2 flex justify-end gap-2 mt-4">
+                  <Button type="button" variant="outline" className="text-black border-gray-400 hover:bg-gray-100" onClick={() => setShowModal(false)}>Cancel</Button>
+                  <Button type="submit" className="bg-blue-600 hover:bg-blue-700 text-white">{selectedMedicine ? "Update Medicine" : "Save Medicine"}</Button>
+                </div>
+              </form>
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+    </div>
   );
 }
