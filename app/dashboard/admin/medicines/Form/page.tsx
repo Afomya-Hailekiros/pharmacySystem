@@ -42,7 +42,6 @@ export default function MedicineForm() {
   const [generics, setGenerics] = useState<Option[]>([]);
   const [dosages, setDosages] = useState<Option[]>([]);
   const [uoms, setUoms] = useState<Option[]>([]);
-  const [medicines, setMedicines] = useState<MedicineType[]>([]);
   const [selectedMedicine, setSelectedMedicine] = useState<MedicineType | null>(null);
 
   const [form, setForm] = useState({
@@ -66,7 +65,7 @@ export default function MedicineForm() {
   const UOM_URL = "https://pharmacy-management-9ls6.onrender.com/api/v1/UOMs";
   const MEDICINE_URL = "https://pharmacy-management-9ls6.onrender.com/api/v1/medicines";
 
-  // react-select custom styles
+  // ✅ react-select custom styles
   const customStyles = {
     control: (provided: any, state: any) => ({
       ...provided,
@@ -85,13 +84,11 @@ export default function MedicineForm() {
         ? "#e0f2fe"
         : "white",
       color: state.isSelected ? "white" : "black",
-      "&:active": { backgroundColor: "#1d4ed8", color: "white" },
     }),
     singleValue: (provided: any) => ({ ...provided, color: "black" }),
-    placeholder: (provided: any) => ({ ...provided, color: "#6b7280" }),
   };
 
-  // Load JWT from cookie
+  // ✅ Load JWT from cookie
   useEffect(() => {
     const getCookie = (name: string) => {
       const cookies = document.cookie.split("; ");
@@ -104,76 +101,89 @@ export default function MedicineForm() {
     setJwt(getCookie("jwt") || null);
   }, []);
 
-  // Fetch dropdowns + medicines
-  const fetchData = async () => {
+  // ✅ Fetch dropdown data
+  const fetchDropdowns = async () => {
     if (!jwt) return;
     try {
-      const [cats, gens, dos, uo, meds] = await Promise.all([
+      const [cats, gens, dos, uo] = await Promise.all([
         axios.get(CATEGORY_URL, { headers: { Authorization: `Bearer ${jwt}` } }),
         axios.get(GENERIC_URL, { headers: { Authorization: `Bearer ${jwt}` } }),
         axios.get(DOSAGE_URL, { headers: { Authorization: `Bearer ${jwt}` } }),
         axios.get(UOM_URL, { headers: { Authorization: `Bearer ${jwt}` } }),
-        axios.get(MEDICINE_URL, { headers: { Authorization: `Bearer ${jwt}` } }),
       ]);
       setCategories(cats.data.data.categories || []);
       setGenerics(gens.data.data.generics || []);
       setDosages(dos.data.data.dosages || []);
       setUoms(uo.data.data.units || []);
-      setMedicines(meds.data.data || []);
     } catch {
-      toast({ title: "❌ Error", description: "Failed to load data.", variant: "destructive" });
-    }
-  };
-
-  useEffect(() => {
-    if (jwt) fetchData();
-  }, [jwt]);
-
-  // Prefill form if editing via URL
-  useEffect(() => {
-    const medicineId = searchParams.get("id");
-    if (!medicineId || !medicines.length) return;
-    const med = medicines.find((m) => m._id === medicineId);
-    if (med) {
-      setSelectedMedicine(med);
-      setForm({
-        category: med.category,
-        generic: med.generic,
-        brandName: med.brandName,
-        dosage: med.dosage,
-        unit: med.unit,
-        origin: med.origin || "",
-        itemStrength: med.itemStrength || "",
-        packSize: med.packSize || "",
-        batchNo: med.batchNo,
-        expiryDate: med.expiryDate || "",
-        quantity: med.quantity.toString(),
-        unitPrice: med.unitPrice.toString(),
+      toast({
+        title: "❌ Error",
+        description: "Failed to load dropdown data.",
+        variant: "destructive",
       });
     }
-  }, [searchParams, medicines]);
-
-  const handleChange = (name: string, value: any) => {
-    setForm({ ...form, [name]: value });
   };
+
+  useEffect(() => {
+    if (jwt) fetchDropdowns();
+  }, [jwt]);
+
+  // ✅ If editing (from URL param)
+  useEffect(() => {
+    const id = searchParams.get("id");
+    if (!id || !jwt) return;
+    (async () => {
+      try {
+        const res = await axios.get(`${MEDICINE_URL}/${id}`, {
+          headers: { Authorization: `Bearer ${jwt}` },
+        });
+        const med = res.data.data;
+        setSelectedMedicine(med);
+        setForm({
+          category: med.category,
+          generic: med.generic,
+          brandName: med.brandName,
+          dosage: med.dosage,
+          unit: med.unit,
+          origin: med.origin || "",
+          itemStrength: med.itemStrength || "",
+          packSize: med.packSize || "",
+          batchNo: med.batchNo,
+          expiryDate: med.expiryDate || "",
+          quantity: med.quantity.toString(),
+          unitPrice: med.unitPrice.toString(),
+        });
+      } catch {
+        toast({
+          title: "❌ Error",
+          description: "Failed to load medicine details.",
+          variant: "destructive",
+        });
+      }
+    })();
+  }, [searchParams, jwt]);
+
+  const handleChange = (name: string, value: any) => setForm({ ...form, [name]: value });
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!jwt) return;
+    const payload = {
+      ...form,
+      quantity: parseInt(form.quantity),
+      unitPrice: parseFloat(form.unitPrice),
+    };
+
     try {
       if (selectedMedicine) {
-        await axios.put(
-          `${MEDICINE_URL}/${selectedMedicine._id}`,
-          { ...form, quantity: parseInt(form.quantity), unitPrice: parseFloat(form.unitPrice) },
-          { headers: { Authorization: `Bearer ${jwt}` } }
-        );
+        await axios.put(`${MEDICINE_URL}/${selectedMedicine._id}`, payload, {
+          headers: { Authorization: `Bearer ${jwt}` },
+        });
         toast({ title: "✅ Medicine updated successfully!" });
       } else {
-        await axios.post(
-          MEDICINE_URL,
-          { ...form, quantity: parseInt(form.quantity), unitPrice: parseFloat(form.unitPrice) },
-          { headers: { Authorization: `Bearer ${jwt}` } }
-        );
+        await axios.post(MEDICINE_URL, payload, {
+          headers: { Authorization: `Bearer ${jwt}` },
+        });
         toast({ title: "✅ Medicine added successfully!" });
       }
       router.push("/dashboard/admin/medicines");
@@ -183,49 +193,6 @@ export default function MedicineForm() {
   };
 
   const mapOptions = (arr: Option[]) => arr.map((o) => ({ value: o._id, label: o.name }));
-  const mapMedicineOptions = medicines.map((m) => ({
-    value: m._id,
-    label: `${m.brandName} | ${m.generic} | Batch: ${m.batchNo}`,
-  }));
-
-  const handleSelectMedicine = (option: any) => {
-    if (!option) {
-      setSelectedMedicine(null);
-      setForm({
-        category: "",
-        generic: "",
-        brandName: "",
-        dosage: "",
-        unit: "",
-        origin: "",
-        itemStrength: "",
-        packSize: "",
-        batchNo: "",
-        expiryDate: "",
-        quantity: "",
-        unitPrice: "",
-      });
-      return;
-    }
-    const med = medicines.find((m) => m._id === option.value);
-    if (med) {
-      setSelectedMedicine(med);
-      setForm({
-        category: med.category,
-        generic: med.generic,
-        brandName: med.brandName,
-        dosage: med.dosage,
-        unit: med.unit,
-        origin: med.origin || "",
-        itemStrength: med.itemStrength || "",
-        packSize: med.packSize || "",
-        batchNo: med.batchNo,
-        expiryDate: med.expiryDate || "",
-        quantity: "",
-        unitPrice: med.unitPrice.toString(),
-      });
-    }
-  };
 
   return (
     <Card className="max-w-3xl mx-auto mt-10 shadow-xl rounded-2xl border border-gray-200 bg-white px-4 sm:px-8">
@@ -235,20 +202,9 @@ export default function MedicineForm() {
           {selectedMedicine ? "Edit Medicine" : "Add New Medicine"}
         </h2>
 
-        {/* Search existing medicine */}
-        <div className="mb-6">
-          <Label className="text-gray-700 font-medium">Search Existing Medicine</Label>
-          <Select
-            styles={customStyles}
-            options={mapMedicineOptions}
-            onChange={handleSelectMedicine}
-            isClearable
-            placeholder="Search by brand, generic, or batch..."
-          />
-        </div>
-
-        {/* Form: vertical on small, two-column on md+ */}
+        {/* ✅ Medicine Form */}
         <form onSubmit={handleSubmit} className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          {/* Category */}
           <div>
             <Label className="text-gray-700 font-medium">Category</Label>
             <Select
@@ -261,6 +217,7 @@ export default function MedicineForm() {
             />
           </div>
 
+          {/* Generic */}
           <div>
             <Label className="text-gray-700 font-medium">Generic</Label>
             <Select
@@ -273,6 +230,7 @@ export default function MedicineForm() {
             />
           </div>
 
+          {/* Brand Name */}
           <div>
             <Label className="text-gray-700 font-medium">Brand Name</Label>
             <Input
@@ -283,6 +241,7 @@ export default function MedicineForm() {
             />
           </div>
 
+          {/* Dosage */}
           <div>
             <Label className="text-gray-700 font-medium">Dosage</Label>
             <Select
@@ -295,6 +254,7 @@ export default function MedicineForm() {
             />
           </div>
 
+          {/* Unit */}
           <div>
             <Label className="text-gray-700 font-medium">Unit of Measure</Label>
             <Select
@@ -307,6 +267,7 @@ export default function MedicineForm() {
             />
           </div>
 
+          {/* Origin */}
           <div>
             <Label className="text-gray-700 font-medium">Origin</Label>
             <Input
@@ -316,6 +277,7 @@ export default function MedicineForm() {
             />
           </div>
 
+          {/* Item Strength */}
           <div>
             <Label className="text-gray-700 font-medium">Item Strength</Label>
             <Input
@@ -325,6 +287,7 @@ export default function MedicineForm() {
             />
           </div>
 
+          {/* Pack Size */}
           <div>
             <Label className="text-gray-700 font-medium">Pack Size</Label>
             <Input
@@ -334,6 +297,7 @@ export default function MedicineForm() {
             />
           </div>
 
+          {/* Batch No */}
           <div>
             <Label className="text-gray-700 font-medium">Batch No</Label>
             <Input
@@ -344,6 +308,7 @@ export default function MedicineForm() {
             />
           </div>
 
+          {/* Expiry Date */}
           <div>
             <Label className="text-gray-700 font-medium">Expiry Date</Label>
             <Input
@@ -354,6 +319,7 @@ export default function MedicineForm() {
             />
           </div>
 
+          {/* Quantity */}
           <div>
             <Label className="text-gray-700 font-medium">Quantity</Label>
             <Input
@@ -365,6 +331,7 @@ export default function MedicineForm() {
             />
           </div>
 
+          {/* Unit Price */}
           <div>
             <Label className="text-gray-700 font-medium">Unit Price</Label>
             <Input
@@ -375,6 +342,7 @@ export default function MedicineForm() {
             />
           </div>
 
+          {/* Submit Button */}
           <div className="col-span-1 md:col-span-2 flex justify-end mt-6">
             <Button
               type="submit"
