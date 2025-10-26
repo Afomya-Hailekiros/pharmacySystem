@@ -9,22 +9,48 @@ import { useToast } from "@/components/ui/use-toast";
 import { Toaster } from "@/components/ui/toaster";
 import { Card, CardContent } from "@/components/ui/card";
 import Select from "react-select";
+import { useSearchParams, useRouter } from "next/navigation";
 
 interface Option {
   _id: string;
   name: string;
 }
 
+interface MedicineType {
+  _id: string;
+  brandName: string;
+  category: string;
+  generic: string;
+  dosage: string;
+  unit: string;
+  origin?: string;
+  itemStrength?: string;
+  packSize?: string;
+  batchNo: string;
+  expiryDate?: string;
+  quantity: number;
+  unitPrice: number;
+}
+
 export default function MedicineForm() {
   const { toast } = useToast();
-
+  const searchParams = useSearchParams();
+  const router = useRouter();
   const [jwt, setJwt] = useState<string | null>(null);
+
+  // Dropdowns
   const [categories, setCategories] = useState<Option[]>([]);
   const [generics, setGenerics] = useState<Option[]>([]);
   const [dosages, setDosages] = useState<Option[]>([]);
   const [uoms, setUoms] = useState<Option[]>([]);
-  const [medicines, setMedicines] = useState<any[]>([]);
 
+  // All medicines (for search)
+  const [medicines, setMedicines] = useState<MedicineType[]>([]);
+
+  // Selected medicine from search or edit
+  const [selectedMedicine, setSelectedMedicine] = useState<MedicineType | null>(null);
+
+  // Form state
   const [form, setForm] = useState({
     category: "",
     generic: "",
@@ -46,6 +72,31 @@ export default function MedicineForm() {
   const UOM_URL = "https://pharmacy-management-9ls6.onrender.com/api/v1/UOMs";
   const MEDICINE_URL = "https://pharmacy-management-9ls6.onrender.com/api/v1/medicines";
 
+  // react-select custom styles
+  const customStyles = {
+    control: (provided: any, state: any) => ({
+      ...provided,
+      backgroundColor: "white",
+      borderColor: state.isFocused ? "#2563eb" : "#d1d5db",
+      boxShadow: state.isFocused ? "0 0 0 1px #2563eb" : "none",
+      "&:hover": { borderColor: "#2563eb" },
+      minHeight: "42px",
+    }),
+    menu: (provided: any) => ({ ...provided, backgroundColor: "white", zIndex: 20 }),
+    option: (provided: any, state: any) => ({
+      ...provided,
+      backgroundColor: state.isSelected
+        ? "#2563eb"
+        : state.isFocused
+        ? "#e0f2fe"
+        : "white",
+      color: state.isSelected ? "white" : "black",
+      "&:active": { backgroundColor: "#1d4ed8", color: "white" },
+    }),
+    singleValue: (provided: any) => ({ ...provided, color: "black" }),
+    placeholder: (provided: any) => ({ ...provided, color: "#6b7280" }),
+  };
+
   // Load JWT
   useEffect(() => {
     const getCookie = (name: string) => {
@@ -59,10 +110,9 @@ export default function MedicineForm() {
     setJwt(getCookie("jwt") || null);
   }, []);
 
-  // Fetch dropdown data
+  // Fetch all dropdowns + medicines
   const fetchData = async () => {
     if (!jwt) return;
-
     try {
       const [cats, gens, dos, uo, meds] = await Promise.all([
         axios.get(CATEGORY_URL, { headers: { Authorization: `Bearer ${jwt}` } }),
@@ -80,7 +130,7 @@ export default function MedicineForm() {
     } catch {
       toast({
         title: "❌ Error",
-        description: "Failed to load dropdown data.",
+        description: "Failed to load data.",
         variant: "destructive",
       });
     }
@@ -90,58 +140,148 @@ export default function MedicineForm() {
     if (jwt) fetchData();
   }, [jwt]);
 
-  // Handle input changes
+  // Prefill form if editing via URL
+  useEffect(() => {
+    const medicineId = searchParams.get("id");
+    if (!medicineId || !medicines.length) return;
+
+    const med = medicines.find((m) => m._id === medicineId);
+    if (med) {
+      setSelectedMedicine(med);
+      setForm({
+        category: med.category,
+        generic: med.generic,
+        brandName: med.brandName,
+        dosage: med.dosage,
+        unit: med.unit,
+        origin: med.origin || "",
+        itemStrength: med.itemStrength || "",
+        packSize: med.packSize || "",
+        batchNo: med.batchNo,
+        expiryDate: med.expiryDate || "",
+        quantity: med.quantity.toString(),
+        unitPrice: med.unitPrice.toString(),
+      });
+    }
+  }, [searchParams, medicines]);
+
   const handleChange = (name: string, value: any) => {
     setForm({ ...form, [name]: value });
   };
 
-  // Submit form
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!jwt) return;
 
-    const exists = medicines.find(
-      (m) => m.brandName.toLowerCase() === form.brandName.toLowerCase()
-    );
-
-    if (exists && exists.batchNo === form.batchNo) {
-      const newQty = exists.quantity + parseInt(form.quantity);
-      try {
-        await axios.put(`${MEDICINE_URL}/${exists._id}`, { quantity: newQty }, { headers: { Authorization: `Bearer ${jwt}` } });
-        toast({ title: "✅ Quantity updated successfully!" });
-      } catch {
-        toast({ title: "❌ Failed to update quantity", variant: "destructive" });
-      }
-      return;
-    }
-
     try {
-      await axios.post(MEDICINE_URL, {
-        ...form,
-        quantity: parseInt(form.quantity),
-        unitPrice: parseFloat(form.unitPrice),
-      }, { headers: { Authorization: `Bearer ${jwt}` } });
-      toast({ title: "✅ Medicine added successfully!" });
+      if (selectedMedicine) {
+        // Update existing medicine
+        await axios.put(
+          `${MEDICINE_URL}/${selectedMedicine._id}`,
+          {
+            ...form,
+            quantity: parseInt(form.quantity),
+            unitPrice: parseFloat(form.unitPrice),
+          },
+          { headers: { Authorization: `Bearer ${jwt}` } }
+        );
+        toast({ title: "✅ Medicine updated successfully!" });
+      } else {
+        // Add new medicine
+        await axios.post(
+          MEDICINE_URL,
+          {
+            ...form,
+            quantity: parseInt(form.quantity),
+            unitPrice: parseFloat(form.unitPrice),
+          },
+          { headers: { Authorization: `Bearer ${jwt}` } }
+        );
+        toast({ title: "✅ Medicine added successfully!" });
+      }
+
+      router.push("/dashboard/admin/medicines");
     } catch {
-      toast({ title: "❌ Failed to add medicine", variant: "destructive" });
+      toast({ title: "❌ Failed to save medicine", variant: "destructive" });
     }
   };
 
-  // Helper to convert Option[] to react-select format
   const mapOptions = (arr: Option[]) => arr.map((o) => ({ value: o._id, label: o.name }));
+  const mapMedicineOptions = medicines.map((m) => ({
+    value: m._id,
+    label: `${m.brandName} | ${m.generic} | Batch: ${m.batchNo}`,
+  }));
+
+  // Auto-fill form when selecting medicine from search
+  const handleSelectMedicine = (option: any) => {
+    if (!option) {
+      setSelectedMedicine(null);
+      setForm({
+        category: "",
+        generic: "",
+        brandName: "",
+        dosage: "",
+        unit: "",
+        origin: "",
+        itemStrength: "",
+        packSize: "",
+        batchNo: "",
+        expiryDate: "",
+        quantity: "",
+        unitPrice: "",
+      });
+      return;
+    }
+
+    const med = medicines.find((m) => m._id === option.value);
+    if (med) {
+      setSelectedMedicine(med);
+      setForm({
+        category: med.category,
+        generic: med.generic,
+        brandName: med.brandName,
+        dosage: med.dosage,
+        unit: med.unit,
+        origin: med.origin || "",
+        itemStrength: med.itemStrength || "",
+        packSize: med.packSize || "",
+        batchNo: med.batchNo,
+        expiryDate: med.expiryDate || "",
+        quantity: "", // optional: user adds new quantity
+        unitPrice: med.unitPrice.toString(),
+      });
+    }
+  };
 
   return (
-    <Card className="max-w-3xl mx-auto mt-6 shadow-lg">
-      <CardContent className="p-6">
+    <Card className="max-w-3xl mx-auto mt-10 shadow-xl rounded-2xl border border-gray-200">
+      <CardContent className="p-8">
         <Toaster />
-        <h2 className="text-2xl font-bold mb-6 text-blue-700">Add Medicine</h2>
-        <form onSubmit={handleSubmit} className="grid grid-cols-1 md:grid-cols-2 gap-4">
+        <h2 className="text-3xl font-semibold mb-8 text-blue-700 text-center">
+          {selectedMedicine ? "Edit Medicine" : "Add New Medicine"}
+        </h2>
 
+        {/* Search existing medicine */}
+        <div className="mb-6">
+          <Label className="text-gray-700 font-medium">Search Existing Medicine</Label>
+          <Select
+            styles={customStyles}
+            options={mapMedicineOptions}
+            onChange={handleSelectMedicine}
+            isClearable
+            placeholder="Search by brand, generic, or batch..."
+          />
+        </div>
+
+        {/* Form */}
+        <form onSubmit={handleSubmit} className="grid grid-cols-1 md:grid-cols-2 gap-6">
           {/* Category */}
           <div>
-            <Label>Category</Label>
+            <Label className="text-gray-700 font-medium">Category</Label>
             <Select
+              styles={customStyles}
               options={mapOptions(categories)}
+              value={mapOptions(categories).find((o) => o.value === form.category) || null}
               onChange={(option: any) => handleChange("category", option?.value || "")}
               placeholder="Select category"
               isClearable
@@ -150,9 +290,11 @@ export default function MedicineForm() {
 
           {/* Generic */}
           <div>
-            <Label>Generic</Label>
+            <Label className="text-gray-700 font-medium">Generic</Label>
             <Select
+              styles={customStyles}
               options={mapOptions(generics)}
+              value={mapOptions(generics).find((o) => o.value === form.generic) || null}
               onChange={(option: any) => handleChange("generic", option?.value || "")}
               placeholder="Select generic"
               isClearable
@@ -161,7 +303,7 @@ export default function MedicineForm() {
 
           {/* Brand Name */}
           <div>
-            <Label>Brand Name</Label>
+            <Label className="text-gray-700 font-medium">Brand Name</Label>
             <Input
               name="brandName"
               value={form.brandName}
@@ -172,29 +314,33 @@ export default function MedicineForm() {
 
           {/* Dosage */}
           <div>
-            <Label>Dosage</Label>
+            <Label className="text-gray-700 font-medium">Dosage</Label>
             <Select
+              styles={customStyles}
               options={mapOptions(dosages)}
+              value={mapOptions(dosages).find((o) => o.value === form.dosage) || null}
               onChange={(option: any) => handleChange("dosage", option?.value || "")}
               placeholder="Select dosage"
               isClearable
             />
           </div>
 
-          {/* Unit of Measure */}
+          {/* Unit */}
           <div>
-            <Label>Unit of Measure</Label>
+            <Label className="text-gray-700 font-medium">Unit of Measure</Label>
             <Select
+              styles={customStyles}
               options={mapOptions(uoms)}
+              value={mapOptions(uoms).find((o) => o.value === form.unit) || null}
               onChange={(option: any) => handleChange("unit", option?.value || "")}
               placeholder="Select unit"
               isClearable
             />
           </div>
 
-          {/* Origin */}
+          {/* Other inputs */}
           <div>
-            <Label>Origin</Label>
+            <Label className="text-gray-700 font-medium">Origin</Label>
             <Input
               name="origin"
               value={form.origin}
@@ -202,9 +348,8 @@ export default function MedicineForm() {
             />
           </div>
 
-          {/* Item Strength */}
           <div>
-            <Label>Item Strength</Label>
+            <Label className="text-gray-700 font-medium">Item Strength</Label>
             <Input
               name="itemStrength"
               value={form.itemStrength}
@@ -212,9 +357,8 @@ export default function MedicineForm() {
             />
           </div>
 
-          {/* Pack Size */}
           <div>
-            <Label>Pack Size</Label>
+            <Label className="text-gray-700 font-medium">Pack Size</Label>
             <Input
               name="packSize"
               value={form.packSize}
@@ -222,9 +366,8 @@ export default function MedicineForm() {
             />
           </div>
 
-          {/* Batch No */}
           <div>
-            <Label>Batch No</Label>
+            <Label className="text-gray-700 font-medium">Batch No</Label>
             <Input
               name="batchNo"
               value={form.batchNo}
@@ -233,9 +376,8 @@ export default function MedicineForm() {
             />
           </div>
 
-          {/* Expiry Date */}
           <div>
-            <Label>Expiry Date</Label>
+            <Label className="text-gray-700 font-medium">Expiry Date</Label>
             <Input
               type="date"
               name="expiryDate"
@@ -244,20 +386,19 @@ export default function MedicineForm() {
             />
           </div>
 
-          {/* Quantity */}
           <div>
-            <Label>Quantity</Label>
+            <Label className="text-gray-700 font-medium">Quantity</Label>
             <Input
               type="number"
               name="quantity"
               value={form.quantity}
               onChange={(e) => handleChange("quantity", e.target.value)}
+              required
             />
           </div>
 
-          {/* Unit Price */}
           <div>
-            <Label>Unit Price</Label>
+            <Label className="text-gray-700 font-medium">Unit Price</Label>
             <Input
               type="number"
               name="unitPrice"
@@ -266,9 +407,12 @@ export default function MedicineForm() {
             />
           </div>
 
-          <div className="col-span-2 flex justify-end mt-4">
-            <Button type="submit" className="bg-blue-600 text-white hover:bg-blue-700 shadow-lg">
-              Save Medicine
+          <div className="col-span-2 flex justify-end mt-6">
+            <Button
+              type="submit"
+              className="bg-blue-600 hover:bg-blue-700 text-white px-8 py-2 rounded-lg shadow-md transition"
+            >
+              {selectedMedicine ? "Update Medicine" : "Save Medicine"}
             </Button>
           </div>
         </form>

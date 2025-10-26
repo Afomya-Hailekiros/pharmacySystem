@@ -108,7 +108,7 @@ export default function AdminDashboard() {
     if (!jwt) return;
     try {
       const res = await axios.get(MEDICINES_URL, { headers: { Authorization: `Bearer ${jwt}` } });
-      setMedicines(res.data.data.medicines || []);
+      setMedicines(res.data.data || []);
     } catch {
       toast({ title: "⚠️ Error", description: "Failed to fetch medicines", variant: "destructive" });
     }
