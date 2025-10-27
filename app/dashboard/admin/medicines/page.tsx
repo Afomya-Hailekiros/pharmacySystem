@@ -8,7 +8,7 @@ import { Toaster } from "@/components/ui/toaster";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { PlusCircle, AlertTriangle, Clock, XCircle, Pill, Package } from "lucide-react";
+import { PlusCircle, AlertTriangle, Clock, XCircle, Pill, Package, Edit3, Trash2 } from "lucide-react";
 
 interface Medicine {
   _id?: string;
@@ -176,13 +176,38 @@ export default function MedicinesPage() {
     };
 
     try {
-      await axios.post(MEDICINE_URL, payload, { headers: { Authorization: `Bearer ${jwt}` } });
-      toast({ title: "✅ Medicine added successfully!" });
+      if (selectedMedicine._id) {
+        // PATCH existing medicine
+        await axios.patch(`${MEDICINE_URL}/${selectedMedicine._id}`, payload, { headers: { Authorization: `Bearer ${jwt}` } });
+        toast({ title: "✅ Medicine updated successfully!" });
+      } else {
+        // POST new medicine
+        await axios.post(MEDICINE_URL, payload, { headers: { Authorization: `Bearer ${jwt}` } });
+        toast({ title: "✅ Medicine added successfully!" });
+      }
       setShowModal(false);
       fetchMedicines();
     } catch (err: any) {
       toast({ title: "❌ Failed to save medicine", description: err?.response?.data?.message || "", variant: "destructive" });
     }
+  };
+
+  const handleDelete = async (id?: string) => {
+    if (!jwt || !id) return;
+    if (!window.confirm("Are you sure you want to delete this medicine?")) return;
+
+    try {
+      await axios.delete(`${MEDICINE_URL}/${id}`, { headers: { Authorization: `Bearer ${jwt}` } });
+      toast({ title: "✅ Medicine deleted successfully!" });
+      fetchMedicines();
+    } catch (err: any) {
+      toast({ title: "❌ Failed to delete medicine", description: err?.response?.data?.message || "", variant: "destructive" });
+    }
+  };
+
+  const handleEdit = (med: Medicine) => {
+    setSelectedMedicine(med);
+    setShowModal(true);
   };
 
   const getCardColor = (expiryDate?: string) => {
@@ -240,15 +265,23 @@ export default function MedicinesPage() {
           <p className="text-black text-center col-span-full py-6">No medicines found.</p>
         ) : filtered.map((med) => (
           <motion.div key={med._id} className={`p-4 border rounded-xl bg-gradient-to-br ${getCardColor(med.expiryDate)} shadow hover:shadow-lg transition-all duration-200 text-black`}>
-            <h2 className="font-semibold text-lg">{med.brandName}</h2>
-            <p className="text-sm mt-1">
-              {med.genericInfo?.name && `Generic: ${med.genericInfo.name}`}
-              {med.categoryInfo?.name && ` | ${med.categoryInfo.name}`}
-            </p>
-            <p className="text-sm">
-              Batch: {med.batchNo || "-"} | Qty: <span className={`${(med.quantity ?? 0) < (med.stockAlert ?? 50) ? "text-red-600 font-bold" : "text-green-600 font-bold"}`}>{med.quantity}</span> | Stock Alert: {med.stockAlert} | Unit Price: ${med.unitPrice ?? 0}
-            </p>
-            <p className="text-sm">Exp: {med.expiryDate ? new Date(med.expiryDate).toLocaleDateString() : "-"}</p>
+            <div className="flex justify-between items-start">
+              <div>
+                <h2 className="font-semibold text-lg">{med.brandName}</h2>
+                <p className="text-sm mt-1">
+                  {med.genericInfo?.name && `Generic: ${med.genericInfo.name}`}
+                  {med.categoryInfo?.name && ` | ${med.categoryInfo.name}`}
+                </p>
+                <p className="text-sm">
+                  Batch: {med.batchNo || "-"} | Qty: <span className={`${(med.quantity ?? 0) < (med.stockAlert ?? 50) ? "text-red-600 font-bold" : "text-green-600 font-bold"}`}>{med.quantity}</span> | Stock Alert: {med.stockAlert} | Unit Price: ${med.unitPrice ?? 0}
+                </p>
+                <p className="text-sm">Exp: {med.expiryDate ? new Date(med.expiryDate).toLocaleDateString() : "-"}</p>
+              </div>
+              <div className="flex flex-col gap-2 ml-2">
+                <Button size="sm" variant="outline" onClick={() => handleEdit(med)}><Edit3 size={16} /></Button>
+                <Button size="sm" variant="destructive" onClick={() => handleDelete(med._id)}><Trash2 size={16} /></Button>
+              </div>
+            </div>
           </motion.div>
         ))}
       </motion.div>
@@ -260,7 +293,7 @@ export default function MedicinesPage() {
             initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}>
             <motion.div className="bg-gradient-to-r from-blue-50 to-indigo-50 rounded-2xl shadow-xl w-full max-w-3xl p-6 sm:p-8 mt-20"
               initial={{ y: -50 }} animate={{ y: 0 }} exit={{ y: -50 }}>
-              <h2 className="text-2xl font-semibold mb-6 text-black text-center">Add New Medicine</h2>
+              <h2 className="text-2xl font-semibold mb-6 text-black text-center">{selectedMedicine._id ? "Edit Medicine" : "Add New Medicine"}</h2>
               <form onSubmit={handleSubmit} className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <InputField label="Brand Name" value={selectedMedicine.brandName} onChange={(v) => handleChange("brandName", v)} />
                 <InputField label="Batch No" value={selectedMedicine.batchNo} onChange={(v) => handleChange("batchNo", v)} />
@@ -291,7 +324,7 @@ export default function MedicinesPage() {
 
                 <div className="col-span-1 md:col-span-2 flex justify-end gap-2 mt-4">
                   <Button type="button" variant="outline" onClick={() => setShowModal(false)}>Cancel</Button>
-                  <Button type="submit" className="bg-blue-600 hover:bg-blue-700 text-white">Save Medicine</Button>
+                  <Button type="submit" className="bg-blue-600 hover:bg-blue-700 text-white">{selectedMedicine._id ? "Update" : "Save Medicine"}</Button>
                 </div>
               </form>
             </motion.div>
