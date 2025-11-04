@@ -30,9 +30,7 @@ export const Sidebar = () => {
 
   return (
     <aside className="w-64 bg-white dark:bg-gray-900 border-r dark:border-gray-700 shadow-sm p-4 flex flex-col transition-colors duration-300">
-      <h2 className="text-2xl font-bold mb-8 text-gray-900 dark:text-gray-100">
-        Pharma Admin
-      </h2>
+     
 
       <nav className="flex flex-col space-y-2">
         {links.map(({ href, label, icon: Icon }) => (

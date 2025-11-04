@@ -17,7 +17,7 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
       {/* Sidebar */}
       <aside className="flex flex-col w-64 border-r border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800">
         <div className="flex justify-between items-center p-4 border-b border-gray-200 dark:border-gray-700">
-          <h2 className="text-2xl font-bold text-gray-900 dark:text-gray-100">Pharma Admin</h2>
+          <h2 className="text-2xl font-bold text-gray-900 dark:text-gray-100"> Admin Page</h2>
           {/* Light/Dark toggle icon inside sidebar header */}
           <button
             onClick={() => setTheme(theme === "light" ? "dark" : "light")}
