@@ -6,37 +6,27 @@ import { motion, AnimatePresence } from "framer-motion";
 import { useToast } from "@/components/ui/use-toast";
 import { Toaster } from "@/components/ui/toaster";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { PlusCircle, AlertTriangle, Clock, XCircle, Pill, Package, Edit3, Trash2 } from "lucide-react";
+import {
+  PlusCircle,
+  AlertTriangle,
+  Clock,
+  XCircle,
+  Pill,
+  Package,
+  Edit3,
+  Trash2,
+} from "lucide-react";
+import { Medicine, Option, DosageOption } from "./types";
+import { MedicineModal } from "./components/MedicineModal";
 
-interface Medicine {
-  _id?: string;
-  brandName: string;
-  categoryInfo?: { name: string; _id?: string };
-  genericInfo?: { name: string; _id?: string };
-  dosageInfo?: { dosageInfo: string; _id?: string };
-  uomInfo?: { name: string; _id?: string };
-  batchNo?: string;
-  expiryDate?: string;
-  quantity?: number;
-  unitPrice?: number;
-  stockAlert?: number;
-  packSize?: string;
-  itemStrength?: string;
-  origin?: string;
-}
-
-interface Option {
-  _id: string;
-  name: string;
-}
-
-// URLs
-const MEDICINE_URL = "https://pharmacy-management-9ls6.onrender.com/api/v1/medicines";
-const CATEGORY_URL = "https://pharmacy-management-9ls6.onrender.com/api/v1/categories";
-const GENERIC_URL = "https://pharmacy-management-9ls6.onrender.com/api/v1/generics";
-const DOSAGE_URL = "https://pharmacy-management-9ls6.onrender.com/api/v1/dosages";
+const MEDICINE_URL =
+  "https://pharmacy-management-9ls6.onrender.com/api/v1/medicines";
+const CATEGORY_URL =
+  "https://pharmacy-management-9ls6.onrender.com/api/v1/categories";
+const GENERIC_URL =
+  "https://pharmacy-management-9ls6.onrender.com/api/v1/generics";
+const DOSAGE_URL =
+  "https://pharmacy-management-9ls6.onrender.com/api/v1/dosages";
 const UOM_URL = "https://pharmacy-management-9ls6.onrender.com/api/v1/UOMs";
 
 export default function MedicinesPage() {
@@ -47,12 +37,17 @@ export default function MedicinesPage() {
   const [filterType, setFilterType] = useState<string>("all");
   const [searchTerm, setSearchTerm] = useState("");
   const [showModal, setShowModal] = useState(false);
-  const [selectedMedicine, setSelectedMedicine] = useState<Medicine | null>(null);
+  const [selectedMedicine, setSelectedMedicine] = useState<Medicine | null>(
+    null
+  );
 
   const [categories, setCategories] = useState<Option[]>([]);
   const [generics, setGenerics] = useState<Option[]>([]);
-  const [dosages, setDosages] = useState<Option[]>([]);
+  const [dosages, setDosages] = useState<DosageOption[]>([]);
   const [units, setUnits] = useState<Option[]>([]);
+
+  const calculateTotalQty = (quantity: number, packSize: string | number) =>
+    (Number(quantity) || 0) * (Number(packSize) || 1);
 
   useEffect(() => {
     const getCookie = (name: string) => {
@@ -69,12 +64,18 @@ export default function MedicinesPage() {
   const fetchMedicines = async () => {
     if (!jwt) return;
     try {
-      const res = await axios.get(MEDICINE_URL, { headers: { Authorization: `Bearer ${jwt}` } });
+      const res = await axios.get(MEDICINE_URL, {
+        headers: { Authorization: `Bearer ${jwt}` },
+      });
       const data = Array.isArray(res.data.data) ? res.data.data : [];
       setMedicines(data);
       applyFilter(data, filterType);
     } catch {
-      toast({ title: "⚠️ Error Fetching Medicines", description: "Failed to fetch medicines.", variant: "destructive" });
+      toast({
+        title: "⚠️ Error Fetching Medicines",
+        description: "Failed to fetch medicines.",
+        variant: "destructive",
+      });
     }
   };
 
@@ -109,16 +110,28 @@ export default function MedicinesPage() {
 
   const applyFilter = (meds: Medicine[], type: string) => {
     const now = new Date();
-    if (type === "low") setFiltered(meds.filter((m) => (m.quantity ?? 0) < (m.stockAlert ?? 50)));
-    else if (type === "expired") setFiltered(meds.filter((m) => new Date(m.expiryDate || "") < now));
-    else if (type === "soon") {
+    if (type === "low") {
+      setFiltered(
+        meds.filter(
+          (m) =>
+            calculateTotalQty(m.quantity ?? 0, m.packSize ?? 1) <
+            (m.stockAlert ?? 50)
+        )
+      );
+    } else if (type === "expired") {
+      setFiltered(meds.filter((m) => new Date(m.expiryDate || "") < now));
+    } else if (type === "soon") {
       const nextMonth = new Date();
       nextMonth.setMonth(now.getMonth() + 1);
-      setFiltered(meds.filter((m) => {
-        const exp = new Date(m.expiryDate || "");
-        return exp > now && exp <= nextMonth;
-      }));
-    } else setFiltered(meds);
+      setFiltered(
+        meds.filter((m) => {
+          const exp = new Date(m.expiryDate || "");
+          return exp > now && exp <= nextMonth;
+        })
+      );
+    } else {
+      setFiltered(meds);
+    }
   };
 
   const handleFilter = (type: string) => {
@@ -132,12 +145,14 @@ export default function MedicinesPage() {
       return;
     }
     const lower = searchTerm.toLowerCase();
-    setFiltered(medicines.filter(
-      (m) =>
-        m.brandName?.toLowerCase().includes(lower) ||
-        m.genericInfo?.name?.toLowerCase().includes(lower) ||
-        m.categoryInfo?.name?.toLowerCase().includes(lower)
-    ));
+    setFiltered(
+      medicines.filter(
+        (m) =>
+          m.brandName?.toLowerCase().includes(lower) ||
+          m.genericInfo?.name?.toLowerCase().includes(lower) ||
+          m.categoryInfo?.name?.toLowerCase().includes(lower)
+      )
+    );
   }, [searchTerm, filterType, medicines]);
 
   const handleAddMedicine = () => {
@@ -147,24 +162,28 @@ export default function MedicinesPage() {
       quantity: 0,
       unitPrice: 0,
       stockAlert: 50,
-      packSize: "",
+      packSize: "1",
       itemStrength: "",
       origin: "",
       expiryDate: "",
       categoryInfo: { name: "", _id: "" },
       genericInfo: { name: "", _id: "" },
-      dosageInfo: { dosageInfo: "", _id: "" },
+      dosageInfo: {
+        dosageInfo: "", _id: "",
+        name: undefined
+      },
       uomInfo: { name: "", _id: "" },
     });
     setShowModal(true);
   };
 
   const handleChange = (name: keyof Medicine, value: any) => {
-    setSelectedMedicine((prev) => (prev ? { ...prev, [name]: value } : prev));
+    setSelectedMedicine((prev) =>
+      prev ? { ...prev, [name]: value } : prev
+    );
   };
 
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
+  const handleSubmit = async () => {
     if (!jwt || !selectedMedicine) return;
 
     const payload = {
@@ -177,31 +196,45 @@ export default function MedicinesPage() {
 
     try {
       if (selectedMedicine._id) {
-        // PATCH existing medicine
-        await axios.patch(`${MEDICINE_URL}/${selectedMedicine._id}`, payload, { headers: { Authorization: `Bearer ${jwt}` } });
+        await axios.patch(
+          `${MEDICINE_URL}/${selectedMedicine._id}`,
+          payload,
+          { headers: { Authorization: `Bearer ${jwt}` } }
+        );
         toast({ title: "✅ Medicine updated successfully!" });
       } else {
-        // POST new medicine
-        await axios.post(MEDICINE_URL, payload, { headers: { Authorization: `Bearer ${jwt}` } });
+        await axios.post(MEDICINE_URL, payload, {
+          headers: { Authorization: `Bearer ${jwt}` },
+        });
         toast({ title: "✅ Medicine added successfully!" });
       }
       setShowModal(false);
       fetchMedicines();
     } catch (err: any) {
-      toast({ title: "❌ Failed to save medicine", description: err?.response?.data?.message || "", variant: "destructive" });
+      toast({
+        title: "❌ Failed to save medicine",
+        description: err?.response?.data?.message || "",
+        variant: "destructive",
+      });
     }
   };
 
   const handleDelete = async (id?: string) => {
     if (!jwt || !id) return;
-    if (!window.confirm("Are you sure you want to delete this medicine?")) return;
-
+    if (!window.confirm("Are you sure you want to delete this medicine?"))
+      return;
     try {
-      await axios.delete(`${MEDICINE_URL}/${id}`, { headers: { Authorization: `Bearer ${jwt}` } });
+      await axios.delete(`${MEDICINE_URL}/${id}`, {
+        headers: { Authorization: `Bearer ${jwt}` },
+      });
       toast({ title: "✅ Medicine deleted successfully!" });
       fetchMedicines();
     } catch (err: any) {
-      toast({ title: "❌ Failed to delete medicine", description: err?.response?.data?.message || "", variant: "destructive" });
+      toast({
+        title: "❌ Failed to delete medicine",
+        description: err?.response?.data?.message || "",
+        variant: "destructive",
+      });
     }
   };
 
@@ -210,49 +243,65 @@ export default function MedicinesPage() {
     setShowModal(true);
   };
 
-  const getCardColor = (expiryDate?: string) => {
-    if (!expiryDate) return "from-white to-blue-50";
+  const getCardColor = (med: Medicine) => {
     const now = new Date();
-    const exp = new Date(expiryDate);
+    const exp = new Date(med.expiryDate || "");
+    const totalQty = calculateTotalQty(med.quantity ?? 0, med.packSize ?? 1);
     const nextMonth = new Date();
     nextMonth.setMonth(now.getMonth() + 1);
-    if (exp < now) return "from-red-100 to-red-200 border-red-400";
-    if (exp >= now && exp <= nextMonth) return "from-yellow-100 to-yellow-200 border-yellow-400";
-    return "from-white to-blue-50 border-blue-100";
+
+    if (exp < now)
+      return "bg-red-100 dark:bg-red-950 border-red-400 dark:border-red-700";
+    if (exp >= now && exp <= nextMonth)
+      return "bg-yellow-100 dark:bg-yellow-950 border-yellow-400 dark:border-yellow-700";
+    if (totalQty < (med.stockAlert ?? 50))
+      return "bg-red-50 dark:bg-red-900 border-red-300 dark:border-red-700";
+    return "bg-white dark:bg-gray-800 border-gray-200 dark:border-gray-700";
   };
 
   return (
-    <div className="space-y-8 p-6 min-h-screen bg-gradient-to-br from-blue-50 to-indigo-100 text-black">
+    <div className="space-y-8 p-6 min-h-screen bg-background text-foreground transition-colors duration-300">
       <Toaster />
 
       {/* Header */}
-      <motion.div className="flex flex-col sm:flex-row justify-between items-center gap-4 bg-gradient-to-r from-blue-100 to-indigo-200 p-4 rounded-xl shadow-md">
-        <h1 className="text-3xl font-bold text-black flex items-center gap-2">
-          <Pill className="h-7 w-7 text-black" /> Medicines Dashboard
+      <motion.div className="flex flex-col sm:flex-row justify-between items-center gap-4 bg-muted dark:bg-gray-800 p-4 rounded-xl shadow-md">
+        <h1 className="text-3xl font-bold flex items-center gap-2">
+          <Pill className="h-7 w-7" /> Medicines Dashboard
         </h1>
-        <Button onClick={handleAddMedicine} className="bg-blue-600 hover:bg-blue-700 text-white font-semibold shadow-lg flex items-center gap-2">
+        <Button
+          onClick={handleAddMedicine}
+          className="bg-blue-600 hover:bg-blue-700 text-white font-semibold shadow-lg flex items-center gap-2"
+        >
           <PlusCircle className="h-5 w-5" /> Add Medicine
         </Button>
       </motion.div>
 
       {/* Search + Filter */}
-      <motion.div className="flex flex-col md:flex-row gap-4 justify-between items-center bg-gradient-to-r from-blue-50 to-indigo-100 p-4 rounded-xl shadow-sm">
+      <motion.div className="flex flex-col md:flex-row gap-4 justify-between items-center bg-muted dark:bg-gray-800 p-4 rounded-xl shadow-sm">
         <div className="relative flex-1 min-w-[250px]">
-          <Input
+          <input
             placeholder="Search by brand, category, or generic..."
             value={searchTerm}
             onChange={(e) => setSearchTerm(e.target.value)}
-            className="pl-3 border focus:ring rounded-md text-black"
+            className="pl-3 border dark:border-gray-700 focus:ring rounded-md bg-background text-foreground w-full"
           />
         </div>
         <div className="flex flex-wrap gap-2">
-          {[{ key: "low", label: "Low Stock", icon: <AlertTriangle /> },
+          {[
+            { key: "low", label: "Low Stock", icon: <AlertTriangle /> },
             { key: "expired", label: "Expired", icon: <XCircle /> },
             { key: "soon", label: "To Be Expired", icon: <Clock /> },
             { key: "all", label: "All", icon: <Package /> },
           ].map(({ key, label, icon }) => (
-            <Button key={key} onClick={() => handleFilter(key)}
-              className={`transition flex items-center gap-2 ${filterType === key ? "bg-blue-500 text-white" : "bg-white border text-black hover:bg-blue-100"}`}>
+            <Button
+              key={key}
+              onClick={() => handleFilter(key)}
+              className={`transition flex items-center gap-2 ${
+                filterType === key
+                  ? "bg-blue-500 text-white"
+                  : "bg-background border dark:border-gray-700 text-foreground hover:bg-accent"
+              }`}
+            >
               {icon} {label}
             </Button>
           ))}
@@ -262,103 +311,93 @@ export default function MedicinesPage() {
       {/* Medicines Grid */}
       <motion.div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-4">
         {filtered.length === 0 ? (
-          <p className="text-black text-center col-span-full py-6">No medicines found.</p>
-        ) : filtered.map((med) => (
-          <motion.div key={med._id} className={`p-4 border rounded-xl bg-gradient-to-br ${getCardColor(med.expiryDate)} shadow hover:shadow-lg transition-all duration-200 text-black`}>
-            <div className="flex justify-between items-start">
-              <div>
-                <h2 className="font-semibold text-lg">{med.brandName}</h2>
-                <p className="text-sm mt-1">
-                  {med.genericInfo?.name && `Generic: ${med.genericInfo.name}`}
-                  {med.categoryInfo?.name && ` | ${med.categoryInfo.name}`}
-                </p>
-                <p className="text-sm">
-                  Batch: {med.batchNo || "-"} | Qty: <span className={`${(med.quantity ?? 0) < (med.stockAlert ?? 50) ? "text-red-600 font-bold" : "text-green-600 font-bold"}`}>{med.quantity}</span> | Stock Alert: {med.stockAlert} | Unit Price: ${med.unitPrice ?? 0}
-                </p>
-                <p className="text-sm">Exp: {med.expiryDate ? new Date(med.expiryDate).toLocaleDateString() : "-"}</p>
+          <p className="text-center col-span-full py-6">
+            No medicines found.
+          </p>
+        ) : (
+          filtered.map((med) => (
+            <motion.div
+              key={med._id}
+              className={`p-4 border rounded-xl ${getCardColor(
+                med
+              )} shadow hover:shadow-lg transition-all duration-200`}
+            >
+              <div className="flex justify-between items-start">
+                <div>
+                  <h2 className="font-semibold text-lg">
+                    {med.brandName}
+                  </h2>
+                  <p className="text-sm mt-1">
+                    {med.genericInfo?.name &&
+                      `Generic: ${med.genericInfo.name}`}
+                    {med.categoryInfo?.name &&
+                      ` | ${med.categoryInfo.name}`}
+                  </p>
+                  <p className="text-sm">
+                    Batch: {med.batchNo || "-"} | Total Qty:{" "}
+                    <span
+                      className={`${
+                        calculateTotalQty(
+                          med.quantity ?? 0,
+                          med.packSize ?? 1
+                        ) < (med.stockAlert ?? 50)
+                          ? "text-red-600 dark:text-red-400 font-bold"
+                          : "text-green-600 dark:text-green-400 font-bold"
+                      }`}
+                    >
+                      {calculateTotalQty(
+                        med.quantity ?? 0,
+                        med.packSize ?? 1
+                      )}
+                    </span>{" "}
+                    | Stock Alert: {med.stockAlert} | Unit Price: $
+                    {med.unitPrice ?? 0}
+                  </p>
+                  <p className="text-sm">
+                    Exp:{" "}
+                    {med.expiryDate
+                      ? new Date(med.expiryDate).toLocaleDateString()
+                      : "-"}
+                  </p>
+                </div>
+                <div className="flex flex-col gap-2 ml-2">
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    onClick={() => handleEdit(med)}
+                  >
+                    <Edit3 size={16} />
+                  </Button>
+                  <Button
+                    size="sm"
+                    variant="destructive"
+                    onClick={() => handleDelete(med._id)}
+                  >
+                    <Trash2 size={16} />
+                  </Button>
+                </div>
               </div>
-              <div className="flex flex-col gap-2 ml-2">
-                <Button size="sm" variant="outline" onClick={() => handleEdit(med)}><Edit3 size={16} /></Button>
-                <Button size="sm" variant="destructive" onClick={() => handleDelete(med._id)}><Trash2 size={16} /></Button>
-              </div>
-            </div>
-          </motion.div>
-        ))}
+            </motion.div>
+          ))
+        )}
       </motion.div>
 
       {/* Modal */}
       <AnimatePresence>
         {showModal && selectedMedicine && (
-          <motion.div className="fixed inset-0 z-50 flex items-start justify-center bg-black/50 overflow-auto p-4"
-            initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}>
-            <motion.div className="bg-gradient-to-r from-blue-50 to-indigo-50 rounded-2xl shadow-xl w-full max-w-3xl p-6 sm:p-8 mt-20"
-              initial={{ y: -50 }} animate={{ y: 0 }} exit={{ y: -50 }}>
-              <h2 className="text-2xl font-semibold mb-6 text-black text-center">{selectedMedicine._id ? "Edit Medicine" : "Add New Medicine"}</h2>
-              <form onSubmit={handleSubmit} className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <InputField label="Brand Name" value={selectedMedicine.brandName} onChange={(v) => handleChange("brandName", v)} />
-                <InputField label="Batch No" value={selectedMedicine.batchNo} onChange={(v) => handleChange("batchNo", v)} />
-                <InputField label="Quantity" type="number" value={selectedMedicine.quantity} onChange={(v) => handleChange("quantity", Number(v))} />
-                <InputField label="Unit Price" type="number" value={selectedMedicine.unitPrice} onChange={(v) => handleChange("unitPrice", Number(v))} />
-                <InputField label="Stock Alert" type="number" value={selectedMedicine.stockAlert} onChange={(v) => handleChange("stockAlert", Number(v))} />
-                <InputField label="Pack Size" value={selectedMedicine.packSize} onChange={(v) => handleChange("packSize", v)} />
-                <InputField label="Item Strength" value={selectedMedicine.itemStrength} onChange={(v) => handleChange("itemStrength", v)} />
-                <InputField label="Origin" value={selectedMedicine.origin} onChange={(v) => handleChange("origin", v)} />
-                <InputField label="Expiry Date" type="date" value={selectedMedicine.expiryDate} onChange={(v) => handleChange("expiryDate", v)} />
-
-                <SelectField label="Category" options={categories} value={selectedMedicine.categoryInfo?._id} onChange={(id) => {
-                  const cat = categories.find(c => c._id === id);
-                  handleChange("categoryInfo", cat || { name: "", _id: "" });
-                }} />
-                <SelectField label="Generic" options={generics} value={selectedMedicine.genericInfo?._id} onChange={(id) => {
-                  const gen = generics.find(g => g._id === id);
-                  handleChange("genericInfo", gen || { name: "", _id: "" });
-                }} />
-                <SelectField label="Dosage" options={dosages} value={selectedMedicine.dosageInfo?._id} onChange={(id) => {
-                  const dos = dosages.find(d => d._id === id);
-                  handleChange("dosageInfo", dos || { dosageInfo: "", _id: "" });
-                }} />
-                <SelectField label="Unit" options={units} value={selectedMedicine.uomInfo?._id} onChange={(id) => {
-                  const u = units.find(u => u._id === id);
-                  handleChange("uomInfo", u || { name: "", _id: "" });
-                }} />
-
-                <div className="col-span-1 md:col-span-2 flex justify-end gap-2 mt-4">
-                  <Button type="button" variant="outline" onClick={() => setShowModal(false)}>Cancel</Button>
-                  <Button type="submit" className="bg-blue-600 hover:bg-blue-700 text-white">{selectedMedicine._id ? "Update" : "Save Medicine"}</Button>
-                </div>
-              </form>
-            </motion.div>
-          </motion.div>
+          <MedicineModal
+            isOpen={showModal}
+            onClose={() => setShowModal(false)}
+            medicine={selectedMedicine}
+            categories={categories}
+            generics={generics}
+            dosages={dosages}
+            uoms={units}
+            onChange={handleChange}
+            onSave={handleSubmit}
+          />
         )}
       </AnimatePresence>
     </div>
   );
 }
-
-// Input Field
-const InputField: React.FC<{ label: string; value: string | number | undefined; onChange: (v: string) => void; type?: string }> = ({ label, value, onChange, type = "text" }) => (
-  <div>
-    <label className="block mb-1 font-medium text-black">{label}</label>
-    <Input value={value} type={type} onChange={(e) => onChange(e.target.value)} className="border focus:ring rounded-md text-black" />
-  </div>
-);
-
-// Select Field
-const SelectField: React.FC<{ label: string; options: Option[]; value?: string; onChange: (v: string) => void }> = ({ label, options, value, onChange }) => {
-  const safeOptions = Array.isArray(options) ? options : [];
-  return (
-    <div>
-      <label className="block mb-1 font-medium text-black">{label}</label>
-      <Select value={value} onValueChange={onChange}>
-        <SelectTrigger className="border focus:ring rounded-md text-black">
-          <SelectValue placeholder={`Select ${label}`} />
-        </SelectTrigger>
-        <SelectContent>
-          {safeOptions.map((opt) => (
-            <SelectItem key={opt._id} value={opt._id}>{opt.name}</SelectItem>
-          ))}
-        </SelectContent>
-      </Select>
-    </div>
-  );
-};

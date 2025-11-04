@@ -1,41 +1,43 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { DashboardCard } from "@/components/dashboard/DashboardCard";
-import { Users, Pill, BarChart3, List, Boxes, Syringe, Package, FlaskConical } from "lucide-react";
 import axios from "axios";
-import { useRouter } from "next/navigation";
+import { BarChart, AlertTriangle, Clock, XCircle, Pill } from "lucide-react";
 import { useToast } from "@/components/ui/use-toast";
 import { Toaster } from "@/components/ui/toaster";
+import {
+  Card,
+  CardContent,
+  CardHeader,
+  CardTitle,
+} from "@/components/ui/card";
+import {
+  ResponsiveContainer,
+  Bar,
+  XAxis,
+  YAxis,
+  Tooltip,
+  CartesianGrid,
+  ComposedChart,
+} from "recharts";
 
-interface Category { _id: string; name: string; }
-interface Generic { _id: string; name: string; }
-interface Dosage { _id: string; name: string; }
-interface UOM { _id: string; name: string; }
-interface User { _id: string; name: string; email: string; }
-interface Medicine { _id: string; name: string; }
+const MEDICINE_URL =
+  "https://pharmacy-management-9ls6.onrender.com/api/v1/medicines";
+
+interface Medicine {
+  _id: string;
+  brandName: string;
+  quantity: number;
+  packSize: string;
+  stockAlert: number;
+  expiryDate: string;
+}
 
 export default function AdminDashboard() {
   const { toast } = useToast();
-  const router = useRouter();
-
-  const [categories, setCategories] = useState<Category[]>([]);
-  const [generics, setGenerics] = useState<Generic[]>([]);
-  const [dosages, setDosages] = useState<Dosage[]>([]);
-  const [units, setUoms] = useState<UOM[]>([]);
-  const [users, setUsers] = useState<User[]>([]);
-  const [medicines, setMedicines] = useState<Medicine[]>([]);
   const [jwt, setJwt] = useState<string | null>(null);
+  const [medicines, setMedicines] = useState<Medicine[]>([]);
 
-  // ✅ API URLs
-  const CATEGORY_URL = "https://pharmacy-management-9ls6.onrender.com/api/v1/categories";
-  const GENERIC_URL = "https://pharmacy-management-9ls6.onrender.com/api/v1/generics";
-  const DOSAGE_URL = "https://pharmacy-management-9ls6.onrender.com/api/v1/dosages";
-  const UOM_URL = "https://pharmacy-management-9ls6.onrender.com/api/v1/UOMs";
-  const USERS_URL = "https://pharmacy-management-9ls6.onrender.com/api/v1/users";
-  const MEDICINES_URL = "https://pharmacy-management-9ls6.onrender.com/api/v1/medicines";
-
-  // ✅ Load JWT from cookies
   useEffect(() => {
     const getCookie = (name: string) => {
       const cookies = document.cookie ? document.cookie.split("; ") : [];
@@ -48,122 +50,118 @@ export default function AdminDashboard() {
     setJwt(getCookie("jwt") || null);
   }, []);
 
-  // ✅ Fetch categories
-  const fetchCategories = async () => {
-    if (!jwt) return;
-    try {
-      const res = await axios.get(CATEGORY_URL, { headers: { Authorization: `Bearer ${jwt}` } });
-      setCategories(res.data.data.categories || []);
-    } catch {
-      toast({ title: "❌ Error", description: "Failed to fetch categories", variant: "destructive" });
-    }
-  };
-
-  // ✅ Fetch generics
-  const fetchGenerics = async () => {
-    if (!jwt) return;
-    try {
-      const res = await axios.get(GENERIC_URL, { headers: { Authorization: `Bearer ${jwt}` } });
-      setGenerics(res.data.data.generics || []);
-    } catch {
-      toast({ title: "⚠️ Error", description: "Failed to fetch generics", variant: "destructive" });
-    }
-  };
-
-  // ✅ Fetch dosages
-  const fetchDosages = async () => {
-    if (!jwt) return;
-    try {
-      const res = await axios.get(DOSAGE_URL, { headers: { Authorization: `Bearer ${jwt}` } });
-      setDosages(res.data.data.dosages || []);
-    } catch {
-      toast({ title: "⚠️ Error", description: "Failed to fetch dosages", variant: "destructive" });
-    }
-  };
-
-  // ✅ Fetch UOMs
-  const fetchUOMs = async () => {
-    if (!jwt) return;
-    try {
-      const res = await axios.get(UOM_URL, { headers: { Authorization: `Bearer ${jwt}` } });
-      setUoms(res.data.data.units || []);
-    } catch {
-      toast({ title: "⚠️ Error", description: "Failed to fetch UOMs", variant: "destructive" });
-    }
-  };
-
-  // ✅ Fetch Users
-  const fetchUsers = async () => {
-    if (!jwt) return;
-    try {
-      const res = await axios.get(USERS_URL, { headers: { Authorization: `Bearer ${jwt}` } });
-      setUsers(res.data.data.users || []);
-    } catch {
-      toast({ title: "⚠️ Error", description: "Failed to fetch users", variant: "destructive" });
-    }
-  };
-
-  // ✅ Fetch Medicines
   const fetchMedicines = async () => {
     if (!jwt) return;
     try {
-      const res = await axios.get(MEDICINES_URL, { headers: { Authorization: `Bearer ${jwt}` } });
+      const res = await axios.get(MEDICINE_URL, {
+        headers: { Authorization: `Bearer ${jwt}` },
+      });
       setMedicines(res.data.data || []);
     } catch {
-      toast({ title: "⚠️ Error", description: "Failed to fetch medicines", variant: "destructive" });
+      toast({
+        title: "⚠️ Error Fetching Data",
+        description: "Could not load medicine reports.",
+        variant: "destructive",
+      });
     }
   };
 
   useEffect(() => {
-    if (jwt) {
-      fetchCategories();
-      fetchGenerics();
-      fetchDosages();
-      fetchUOMs();
-      fetchUsers();
-      fetchMedicines(); // ✅ Fetch medicines
-    }
+    if (jwt) fetchMedicines();
   }, [jwt]);
 
+  const totalQty = (m: Medicine) =>
+    (Number(m.quantity) || 0) * (Number(m.packSize) || 1);
+
+  const now = new Date();
+  const nextMonth = new Date();
+  nextMonth.setMonth(now.getMonth() + 1);
+
+  const lowStock = medicines.filter((m) => totalQty(m) < (m.stockAlert ?? 50));
+  const expired = medicines.filter((m) => new Date(m.expiryDate) < now);
+  const soonToExpire = medicines.filter((m) => {
+    const exp = new Date(m.expiryDate);
+    return exp > now && exp <= nextMonth;
+  });
+
+  const reportData = [
+    { name: "Low Stock", value: lowStock.length },
+    { name: "Expired", value: expired.length },
+    { name: "To Be Expired", value: soonToExpire.length },
+    { name: "Total", value: medicines.length },
+  ];
+
   return (
-    <div className="space-y-6 p-6">
+    <div className="p-6 space-y-6">
       <Toaster />
-      <h1 className="text-2xl font-semibold text-blue-700">Admin Dashboard</h1>
+      <h1 className="text-2xl font-bold text-blue-700 flex items-center gap-2">
+        <BarChart className="h-6 w-6" /> Inventory Reports
+      </h1>
 
-      {/* ✅ Dashboard cards */}
-      <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
-        {/* Users */}
-        <div onClick={() => router.push("/dashboard/admin/users")} className="cursor-pointer hover:shadow-lg transition">
-          <DashboardCard title="Users" value={users.length.toString()} icon={Users} />
-        </div>
+      <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+        <Card className="bg-red-50 border-red-300">
+          <CardHeader className="flex items-center justify-between">
+            <CardTitle className="text-red-600 flex items-center gap-2">
+              <AlertTriangle className="h-5 w-5" /> Low Stock
+            </CardTitle>
+          </CardHeader>
+          <CardContent className="text-3xl font-bold text-red-600">
+            {lowStock.length}
+          </CardContent>
+        </Card>
 
-        {/* Medicines */}
-        {/* Medicines */}
-       <div onClick={() => router.push("/dashboard/admin/medicines")} className="cursor-pointer hover:shadow-lg transition">
-         <DashboardCard title="Medicines" value={medicines.length.toString()} icon={FlaskConical} />
-       </div>
+        <Card className="bg-yellow-50 border-yellow-300">
+          <CardHeader className="flex items-center justify-between">
+            <CardTitle className="text-yellow-600 flex items-center gap-2">
+              <Clock className="h-5 w-5" /> To Be Expired
+            </CardTitle>
+          </CardHeader>
+          <CardContent className="text-3xl font-bold text-yellow-600">
+            {soonToExpire.length}
+          </CardContent>
+        </Card>
 
+        <Card className="bg-orange-50 border-orange-300">
+          <CardHeader className="flex items-center justify-between">
+            <CardTitle className="text-orange-600 flex items-center gap-2">
+              <XCircle className="h-5 w-5" /> Expired
+            </CardTitle>
+          </CardHeader>
+          <CardContent className="text-3xl font-bold text-orange-600">
+            {expired.length}
+          </CardContent>
+        </Card>
 
-        {/* Categories */}
-        <div onClick={() => router.push("/dashboard/admin/categories")} className="cursor-pointer hover:shadow-lg transition">
-          <DashboardCard title="Categories" value={categories.length.toString()} icon={List} />
-        </div>
-
-        {/* Generics */}
-        <div onClick={() => router.push("/dashboard/admin/generics")} className="cursor-pointer hover:shadow-lg transition">
-          <DashboardCard title="Generics" value={generics.length.toString()} icon={Boxes} />
-        </div>
-
-        {/* Dosages */}
-        <div onClick={() => router.push("/dashboard/admin/dosages")} className="cursor-pointer hover:shadow-lg transition">
-          <DashboardCard title="Dosages" value={dosages.length.toString()} icon={Syringe} />
-        </div>
-
-        {/* UOMs */}
-        <div onClick={() => router.push("/dashboard/admin/UOM")} className="cursor-pointer hover:shadow-lg transition">
-          <DashboardCard title="UOMs" value={units.length.toString()} icon={Package} />
-        </div>
+        <Card className="bg-blue-50 border-blue-300">
+          <CardHeader className="flex items-center justify-between">
+            <CardTitle className="text-blue-600 flex items-center gap-2">
+              <Pill className="h-5 w-5" /> Total Medicines
+            </CardTitle>
+          </CardHeader>
+          <CardContent className="text-3xl font-bold text-blue-600">
+            {medicines.length}
+          </CardContent>
+        </Card>
       </div>
+
+      <Card className="p-4">
+        <CardHeader>
+          <CardTitle className="text-lg font-semibold">
+            Inventory Overview
+          </CardTitle>
+        </CardHeader>
+        <CardContent>
+          <ResponsiveContainer width="100%" height={350}>
+            <ComposedChart data={reportData}>
+              <CartesianGrid strokeDasharray="3 3" />
+              <XAxis dataKey="name" />
+              <YAxis />
+              <Tooltip />
+              <Bar dataKey="value" barSize={50} fill="#2563eb" radius={8} />
+            </ComposedChart>
+          </ResponsiveContainer>
+        </CardContent>
+      </Card>
     </div>
   );
 }
