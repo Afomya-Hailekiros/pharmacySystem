@@ -42,13 +42,15 @@ export const MedicineModal: React.FC<MedicineModalProps> = ({
 
   return (
     <Dialog open={isOpen} onOpenChange={onClose}>
-      <DialogContent className="max-w-3xl bg-white dark:bg-gray-900 text-gray-900 dark:text-gray-100">
-        <DialogHeader>
+      <DialogContent className="max-w-3xl w-full sm:max-h-[90vh] overflow-auto bg-white dark:bg-gray-900 text-gray-900 dark:text-gray-100 p-6">
+        {/* Header */}
+        <DialogHeader className="sticky top-0 bg-white dark:bg-gray-900 z-10">
           <DialogTitle className="text-lg font-semibold text-gray-900 dark:text-gray-100">
             Add / Edit Medicine
           </DialogTitle>
         </DialogHeader>
 
+        {/* Form Fields */}
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mt-4">
           <InputField
             label="Brand Name"
@@ -135,12 +137,12 @@ export const MedicineModal: React.FC<MedicineModalProps> = ({
           {/* Dosage */}
           <SelectField
             label="Dosage"
-            options={dosages.map(d => ({ _id: d._id, name: d.name }))}
+            options={dosages.map((d) => ({ _id: d._id, name: d.name }))}
             value={medicine.dosageInfo?._id ?? ""}
             onChange={(id) =>
               onChange(
                 "dosageInfo",
-                dosages.find(d => d._id === id) || { _id: "", name: "" }
+                dosages.find((d) => d._id === id) || { _id: "", name: "" }
               )
             }
           />
@@ -159,7 +161,8 @@ export const MedicineModal: React.FC<MedicineModalProps> = ({
           />
         </div>
 
-        <DialogFooter className="mt-6 flex justify-end gap-2">
+        {/* Footer */}
+        <DialogFooter className="mt-6 flex justify-end gap-2 sticky bottom-0 bg-white dark:bg-gray-900 z-10 pt-4">
           <Button onClick={onSave} className="bg-blue-600 hover:bg-blue-700 text-white">
             Save
           </Button>
