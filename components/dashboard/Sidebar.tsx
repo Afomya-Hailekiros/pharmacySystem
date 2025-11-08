@@ -11,6 +11,7 @@ import {
   FlaskConical,
   Layers,
   CircleDot,
+  Package, // <- added icon for Sales
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 
@@ -26,12 +27,11 @@ export const Sidebar = () => {
     { href: "/dashboard/admin/categories", label: "Category", icon: Layers },
     { href: "/dashboard/admin/generics", label: "Generic", icon: CircleDot },
     { href: "/dashboard/admin/reports", label: "Reports", icon: BarChart },
+    { href: "/dashboard/admin/sales", label: "Sales", icon: Package }, // <- new link
   ];
 
   return (
     <aside className="w-64 bg-white dark:bg-gray-900 border-r dark:border-gray-700 shadow-sm p-4 flex flex-col transition-colors duration-300">
-     
-
       <nav className="flex flex-col space-y-2">
         {links.map(({ href, label, icon: Icon }) => (
           <Link

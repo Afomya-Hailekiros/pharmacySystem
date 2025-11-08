@@ -67,10 +67,16 @@ export const MedicineModal: React.FC<MedicineModalProps> = ({
             onChange={(v) => handleNumberChange("quantity", v)}
           />
           <InputField
-            label="Unit Price"
+            label="Purchase Price"
             type="number"
             value={medicine.unitPrice ?? ""}
             onChange={(v) => handleNumberChange("unitPrice", v)}
+          />
+          <InputField
+            label="Selling Price"
+            type="number"
+            value={medicine.retailPrice ?? ""}
+            onChange={(v) => handleNumberChange("retailPrice", v)}
           />
           <InputField
             label="Stock Alert"
@@ -126,7 +132,7 @@ export const MedicineModal: React.FC<MedicineModalProps> = ({
             }
           />
 
-          {/* ✅ Dosage */}
+          {/* Dosage */}
           <SelectField
             label="Dosage"
             options={dosages.map(d => ({ _id: d._id, name: d.name }))}

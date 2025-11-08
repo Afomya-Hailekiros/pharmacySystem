@@ -15,6 +15,7 @@ export interface Medicine {
   batchNo?: string | null;
   quantity: number;
   unitPrice: number;
+  retailPrice: number;    // Selling price
   stockAlert: number;
   packSize?: string;
   itemStrength?: string;

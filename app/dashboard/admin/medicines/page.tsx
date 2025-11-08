@@ -46,8 +46,8 @@ export default function MedicinesPage() {
   const [dosages, setDosages] = useState<DosageOption[]>([]);
   const [units, setUnits] = useState<Option[]>([]);
 
-  const calculateTotalQty = (quantity: number, packSize: string | number) =>
-    (Number(quantity) || 0) * (Number(packSize) || 1);
+  // ✅ STOP calculating with packSize
+  const getTotalQty = (quantity: number) => Number(quantity || 0);
 
   useEffect(() => {
     const getCookie = (name: string) => {
@@ -112,11 +112,7 @@ export default function MedicinesPage() {
     const now = new Date();
     if (type === "low") {
       setFiltered(
-        meds.filter(
-          (m) =>
-            calculateTotalQty(m.quantity ?? 0, m.packSize ?? 1) <
-            (m.stockAlert ?? 50)
-        )
+        meds.filter((m) => getTotalQty(m.quantity) < (m.stockAlert ?? 50))
       );
     } else if (type === "expired") {
       setFiltered(meds.filter((m) => new Date(m.expiryDate || "") < now));
@@ -161,6 +157,7 @@ export default function MedicinesPage() {
       batchNo: "",
       quantity: 0,
       unitPrice: 0,
+      retailPrice: 0,
       stockAlert: 50,
       packSize: "1",
       itemStrength: "",
@@ -168,10 +165,7 @@ export default function MedicinesPage() {
       expiryDate: "",
       categoryInfo: { name: "", _id: "" },
       genericInfo: { name: "", _id: "" },
-      dosageInfo: {
-        dosageInfo: "", _id: "",
-        name: undefined
-      },
+      dosageInfo: { dosageInfo: "", _id: "", name: undefined },
       uomInfo: { name: "", _id: "" },
     });
     setShowModal(true);
@@ -243,10 +237,35 @@ export default function MedicinesPage() {
     setShowModal(true);
   };
 
+  const handleSale = async (medicineId: string, soldQuantity: number) => {
+    if (!jwt) return;
+    try {
+      const med = medicines.find((m) => m._id === medicineId);
+      if (!med) return;
+
+      const newQty = getTotalQty(med.quantity) - soldQuantity;
+
+      await axios.patch(
+        `${MEDICINE_URL}/${medicineId}`,
+        { quantity: newQty },
+        { headers: { Authorization: `Bearer ${jwt}` } }
+      );
+
+      fetchMedicines();
+      toast({ title: "✅ Stock updated successfully!" });
+    } catch (err: any) {
+      toast({
+        title: "❌ Failed to update stock",
+        description: err?.response?.data?.message || "",
+        variant: "destructive",
+      });
+    }
+  };
+
   const getCardColor = (med: Medicine) => {
     const now = new Date();
     const exp = new Date(med.expiryDate || "");
-    const totalQty = calculateTotalQty(med.quantity ?? 0, med.packSize ?? 1);
+    const totalQty = getTotalQty(med.quantity);
     const nextMonth = new Date();
     nextMonth.setMonth(now.getMonth() + 1);
 
@@ -337,21 +356,16 @@ export default function MedicinesPage() {
                     Batch: {med.batchNo || "-"} | Total Qty:{" "}
                     <span
                       className={`${
-                        calculateTotalQty(
-                          med.quantity ?? 0,
-                          med.packSize ?? 1
-                        ) < (med.stockAlert ?? 50)
+                        getTotalQty(med.quantity) < (med.stockAlert ?? 50)
                           ? "text-red-600 dark:text-red-400 font-bold"
                           : "text-green-600 dark:text-green-400 font-bold"
                       }`}
                     >
-                      {calculateTotalQty(
-                        med.quantity ?? 0,
-                        med.packSize ?? 1
-                      )}
+                      {getTotalQty(med.quantity)}
                     </span>{" "}
                     | Stock Alert: {med.stockAlert} | Unit Price: $
-                    {med.unitPrice ?? 0}
+                    {med.unitPrice ?? 0} | Selling Price: $
+                    {med.retailPrice ?? 0}
                   </p>
                   <p className="text-sm">
                     Exp:{" "}
@@ -386,15 +400,17 @@ export default function MedicinesPage() {
       <AnimatePresence>
         {showModal && selectedMedicine && (
           <MedicineModal
-            isOpen={showModal}
-            onClose={() => setShowModal(false)}
-            medicine={selectedMedicine}
-            categories={categories}
-            generics={generics}
-            dosages={dosages}
-            uoms={units}
-            onChange={handleChange}
-            onSave={handleSubmit}
+            {...({
+              isOpen: showModal,
+              onClose: () => setShowModal(false),
+              medicine: selectedMedicine,
+              categories,
+              generics,
+              dosages,
+              uoms: units,
+              onChange: handleChange,
+              onSave: handleSubmit,
+            } as any)}
           />
         )}
       </AnimatePresence>
