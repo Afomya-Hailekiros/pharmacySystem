@@ -1,3 +1,4 @@
+// Sidebar.tsx
 "use client";
 
 import Link from "next/link";
@@ -11,11 +12,16 @@ import {
   FlaskConical,
   Layers,
   CircleDot,
-  Package, // <- added icon for Sales
+  Package,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 
-export const Sidebar = () => {
+interface SidebarProps {
+  isOpen?: boolean;
+  setIsOpen?: React.Dispatch<React.SetStateAction<boolean>>;
+}
+
+export const Sidebar = ({ isOpen, setIsOpen }: SidebarProps) => {
   const pathname = usePathname();
 
   const links = [
@@ -27,27 +33,26 @@ export const Sidebar = () => {
     { href: "/dashboard/admin/categories", label: "Category", icon: Layers },
     { href: "/dashboard/admin/generics", label: "Generic", icon: CircleDot },
     { href: "/dashboard/admin/reports", label: "Reports", icon: BarChart },
-    { href: "/dashboard/admin/sales", label: "Sales", icon: Package }, // <- new link
+    { href: "/dashboard/admin/sales", label: "Sales", icon: Package },
   ];
 
   return (
-    <aside className="w-64 bg-white dark:bg-gray-900 border-r dark:border-gray-700 shadow-sm p-4 flex flex-col transition-colors duration-300">
-      <nav className="flex flex-col space-y-2">
-        {links.map(({ href, label, icon: Icon }) => (
-          <Link
-            key={href}
-            href={href}
-            className={cn(
-              "flex items-center gap-3 px-3 py-2 rounded-lg text-gray-800 dark:text-gray-200 hover:bg-green-300 dark:hover:bg-green-700 transition-colors duration-300",
-              pathname === href &&
-                "bg-green-400 dark:bg-green-600 text-black dark:text-white font-semibold"
-            )}
-          >
-            <Icon className="h-5 w-5" />
-            {label}
-          </Link>
-        ))}
-      </nav>
-    </aside>
+    <nav className="flex flex-col space-y-2 mt-4 md:mt-0">
+      {links.map(({ href, label, icon: Icon }) => (
+        <Link
+          key={href}
+          href={href}
+          className={cn(
+            "flex items-center gap-3 px-3 py-2 rounded-lg text-gray-800 dark:text-gray-200 hover:bg-green-300 dark:hover:bg-green-700 transition-colors duration-300",
+            pathname === href &&
+              "bg-green-400 dark:bg-green-600 text-black dark:text-white font-semibold"
+          )}
+          onClick={() => setIsOpen && setIsOpen(false)} // close sidebar on mobile
+        >
+          <Icon className="h-5 w-5" />
+          {label}
+        </Link>
+      ))}
+    </nav>
   );
 };
