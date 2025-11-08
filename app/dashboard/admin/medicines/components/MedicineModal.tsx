@@ -42,9 +42,18 @@ export const MedicineModal: React.FC<MedicineModalProps> = ({
 
   return (
     <Dialog open={isOpen} onOpenChange={onClose}>
-      <DialogContent className="max-w-3xl w-full sm:max-h-[90vh] overflow-auto bg-white dark:bg-gray-900 text-gray-900 dark:text-gray-100 p-6">
+      <DialogContent
+        className="
+          max-w-3xl w-full
+          bg-white dark:bg-gray-900
+          text-gray-900 dark:text-gray-100
+          max-h-[90vh] overflow-auto
+          md:max-h-auto md:overflow-visible
+          rounded-lg
+        "
+      >
         {/* Header */}
-        <DialogHeader className="sticky top-0 bg-white dark:bg-gray-900 z-10">
+        <DialogHeader className="sticky top-0 bg-white dark:bg-gray-900 z-10 md:static">
           <DialogTitle className="text-lg font-semibold text-gray-900 dark:text-gray-100">
             Add / Edit Medicine
           </DialogTitle>
@@ -162,7 +171,7 @@ export const MedicineModal: React.FC<MedicineModalProps> = ({
         </div>
 
         {/* Footer */}
-        <DialogFooter className="mt-6 flex justify-end gap-2 sticky bottom-0 bg-white dark:bg-gray-900 z-10 pt-4">
+        <DialogFooter className="mt-6 flex justify-end gap-2 sticky bottom-0 bg-white dark:bg-gray-900 z-10 pt-4 md:static md:pt-0">
           <Button onClick={onSave} className="bg-blue-600 hover:bg-blue-700 text-white">
             Save
           </Button>
