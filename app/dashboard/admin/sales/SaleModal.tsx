@@ -108,7 +108,6 @@ export default function SaleModal({
         { headers: { Authorization: `Bearer ${jwt}` } }
       );
 
-      // 🔹 Include paymentMethod
       const payload = {
         medicine: sale.medicineInfo._id,
         quantity: sale.quantity,
@@ -157,38 +156,38 @@ export default function SaleModal({
           exit={{ opacity: 0 }}
         >
           <motion.div
-            className="bg-gradient-to-r from-blue-50 to-indigo-50 rounded-2xl shadow-xl w-full max-w-3xl p-6 sm:p-8 mt-20"
+            className="bg-gradient-to-r from-blue-50 to-indigo-50 dark:from-gray-800 dark:to-gray-900 dark:border-gray-700 border rounded-2xl shadow-xl w-full max-w-3xl p-6 sm:p-8 mt-20"
             initial={{ y: -50 }}
             animate={{ y: 0 }}
             exit={{ y: -50 }}
           >
-            <h2 className="text-2xl font-semibold mb-6 text-black text-center">
+            <h2 className="text-2xl font-semibold mb-6 text-black dark:text-white text-center">
               {sale._id ? "Edit Sale" : "Add New Sale"}
             </h2>
 
             <form onSubmit={handleSubmit} className="grid grid-cols-1 md:grid-cols-2 gap-4">
               {/* Medicine Search */}
               <div className="col-span-1 md:col-span-2">
-                <label className="block mb-1 font-medium text-black">Medicine</label>
+                <label className="block mb-1 font-medium text-black dark:text-white">Medicine</label>
                 <Input
                   placeholder="Search medicine..."
                   value={filter}
                   onChange={(e) => setFilter(e.target.value)}
-                  className="border focus:ring rounded-md text-black mb-2"
+                  className="border dark:border-gray-600 dark:bg-gray-800 dark:text-white focus:ring rounded-md mb-2"
                 />
-                <div className="max-h-48 overflow-auto border rounded-md bg-white">
+                <div className="max-h-48 overflow-auto border rounded-md bg-white dark:bg-gray-800 dark:border-gray-600">
                   {filteredMedicines.length > 0 ? (
                     filteredMedicines.map((m) => (
                       <div
                         key={m._id}
                         onClick={() => handleMedicineSelect(m)}
-                        className="p-2 cursor-pointer hover:bg-blue-100"
+                        className="p-2 cursor-pointer hover:bg-blue-100 dark:hover:bg-gray-700 dark:text-white"
                       >
                         {m.brandName} {m.genericInfo?.name && `- ${m.genericInfo.name}`}
                       </div>
                     ))
                   ) : (
-                    <div className="p-2 text-gray-500">No medicines found</div>
+                    <div className="p-2 text-gray-500 dark:text-gray-400">No medicines found</div>
                   )}
                 </div>
               </div>
@@ -222,18 +221,17 @@ export default function SaleModal({
                 onChange={(v) => handleChange("status", v as Sale["status"])}
               />
 
-              {/* 🔹 New Payment Method */}
+              {/* Payment Method */}
               <SelectField
-                 label="Payment Method"
-                 options={[
-                { _id: "cash", name: "Cash" },
-                { _id: "credit", name: "Credit" },
-                { _id: "mobile", name: "Transfer" },
-                    ]}
-              value={sale.paymentMethod || "cash"}
-             onChange={(v) => handleChange("paymentMethod", v)}
-             />
-
+                label="Payment Method"
+                options={[
+                  { _id: "cash", name: "Cash" },
+                  { _id: "credit", name: "Credit" },
+                  { _id: "mobile", name: "Transfer" },
+                ]}
+                value={sale.paymentMethod || "cash"}
+                onChange={(v) => handleChange("paymentMethod", v)}
+              />
 
               <InputField
                 label="Sold By"
@@ -274,12 +272,12 @@ const InputField: React.FC<{
   type?: string;
 }> = ({ label, value, onChange, type = "text" }) => (
   <div>
-    <label className="block mb-1 font-medium text-black">{label}</label>
+    <label className="block mb-1 font-medium text-black dark:text-white">{label}</label>
     <Input
       type={type}
       value={value}
       onChange={(e) => onChange(e.target.value)}
-      className="border focus:ring rounded-md text-black"
+      className="border dark:border-gray-600 dark:bg-gray-800 dark:text-white focus:ring rounded-md"
       readOnly={["Selling Price", "Price After Discount", "Total"].includes(label)}
     />
   </div>
@@ -292,11 +290,11 @@ const SelectField: React.FC<{
   onChange: (v: string) => void;
 }> = ({ label, options, value, onChange }) => (
   <div>
-    <label className="block mb-1 font-medium text-black">{label}</label>
+    <label className="block mb-1 font-medium text-black dark:text-white">{label}</label>
     <select
       value={value}
       onChange={(e) => onChange(e.target.value)}
-      className="border focus:ring rounded-md text-black w-full p-2"
+      className="border dark:border-gray-600 dark:bg-gray-800 dark:text-white focus:ring rounded-md w-full p-2"
     >
       {options.map((opt) => (
         <option key={opt._id} value={opt._id}>

@@ -7,15 +7,17 @@ import { useToast } from "@/components/ui/use-toast";
 import { Toaster } from "@/components/ui/toaster";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { PlusCircle, Package } from "lucide-react";
+import { PlusCircle, Package, BarChart3 } from "lucide-react";
 import SaleModal from "./SaleModal";
 import SaleCard from "./SaleCard";
-import { Sale, MedicineOption } from "./types"; // ✅ shared types
+import { Sale, MedicineOption } from "./types";
+import { useRouter } from "next/navigation";
 
 const SALES_URL = "https://pharmacy-management-9ls6.onrender.com/api/v1/sales";
 const MEDICINES_URL = "https://pharmacy-management-9ls6.onrender.com/api/v1/medicines";
 
 export default function SalesPage() {
+  const router = useRouter();
   const { toast } = useToast();
   const [jwt, setJwt] = useState<string | null>(null);
   const [sales, setSales] = useState<Sale[]>([]);
@@ -27,7 +29,6 @@ export default function SalesPage() {
   const [totalRevenue, setTotalRevenue] = useState<number>(0);
   const [totalProfit, setTotalProfit] = useState<number>(0);
 
-  // ✅ Get JWT
   useEffect(() => {
     const getCookie = (name: string) => {
       const cookies = document.cookie ? document.cookie.split("; ") : [];
@@ -40,7 +41,6 @@ export default function SalesPage() {
     setJwt(getCookie("jwt") || null);
   }, []);
 
-  // ✅ Fetch sales
   const fetchSales = async () => {
     if (!jwt) return;
     try {
@@ -55,7 +55,6 @@ export default function SalesPage() {
       setSales(data);
       setFiltered(data);
 
-      // ✅ Compute revenue & profit dynamically
       const revenueSum = data.reduce((sum, s) => {
         const sellingPrice = s.sellingPrice || s.medicineInfo.retailPrice || 0;
         const discount = s.discount || 0;
@@ -82,7 +81,6 @@ export default function SalesPage() {
     }
   };
 
-  // ✅ Fetch medicines
   const fetchMedicines = async () => {
     if (!jwt) return;
     try {
@@ -106,7 +104,6 @@ export default function SalesPage() {
     }
   }, [jwt]);
 
-  // ✅ Search filter
   const handleSearch = (term: string) => {
     setSearchTerm(term);
     if (!term.trim()) return setFiltered(sales);
@@ -123,7 +120,6 @@ export default function SalesPage() {
     );
   };
 
-  // ✅ Create empty sale
   const createEmptySale = (): Sale => ({
     medicineInfo: {
       _id: "",
@@ -141,38 +137,44 @@ export default function SalesPage() {
     soldByInfo: { _id: "", userName: "" },
     soldBy: "",
     saleDate: new Date().toISOString(),
-    sellingPrice: 0
+    sellingPrice: 0,
+    paymentMethod: "",
   });
 
   return (
-    <div className="space-y-8 p-6 min-h-screen bg-gradient-to-br from-blue-50 to-indigo-100 text-black">
+    <div className="space-y-8 p-6 min-h-screen bg-gradient-to-br from-blue-50 to-indigo-100 text-black dark:from-gray-900 dark:to-gray-950 dark:text-gray-100 transition-colors duration-300">
       <Toaster />
 
       {/* Header */}
-      <motion.div className="flex flex-col sm:flex-row justify-between items-center gap-4 bg-gradient-to-r from-blue-100 to-indigo-200 p-4 rounded-xl shadow-md">
-        <h1 className="text-3xl font-bold text-black flex items-center gap-2">
-          <Package className="h-7 w-7 text-black" /> Sales Dashboard
+      <motion.div className="flex flex-col sm:flex-row justify-between items-center gap-4 bg-gradient-to-r from-blue-100 to-indigo-200 dark:from-gray-800 dark:to-gray-700 p-4 rounded-xl shadow-md">
+        <h1 className="text-3xl font-bold flex items-center gap-2">
+          <Package className="h-7 w-7 text-blue-600 dark:text-indigo-400" /> Sales Dashboard
         </h1>
-        <Button
-          onClick={() => {
-            setSelectedSale(createEmptySale());
-            setShowModal(true);
-          }}
-          className="bg-blue-600 hover:bg-blue-700 text-white font-semibold shadow-lg flex items-center gap-2"
-        >
-          <PlusCircle className="h-5 w-5" /> Add Sale
-        </Button>
+
+        <div className="flex flex-wrap gap-3">
+          <Button
+            onClick={() => {
+              setSelectedSale(createEmptySale());
+              setShowModal(true);
+            }}
+            className="bg-blue-600 hover:bg-blue-700 dark:bg-indigo-600 dark:hover:bg-indigo-700 text-white font-semibold shadow-lg flex items-center gap-2"
+          >
+            <PlusCircle className="h-5 w-5" /> Add Sale
+          </Button>
+
+          
+        </div>
       </motion.div>
 
       {/* Search + Totals */}
-      <motion.div className="flex flex-col md:flex-row gap-4 justify-between items-center bg-gradient-to-r from-blue-50 to-indigo-100 p-4 rounded-xl shadow-sm">
+      <motion.div className="flex flex-col md:flex-row gap-4 justify-between items-center bg-gradient-to-r from-blue-50 to-indigo-100 dark:from-gray-800 dark:to-gray-700 p-4 rounded-xl shadow-sm">
         <Input
           placeholder="Search by medicine, batch, category, generic..."
           value={searchTerm}
           onChange={(e) => handleSearch(e.target.value)}
-          className="flex-1 border focus:ring rounded-md text-black"
+          className="flex-1 border dark:border-gray-600 focus:ring rounded-md bg-white dark:bg-gray-900 text-black dark:text-white"
         />
-        <div className="flex flex-col sm:flex-row gap-4 font-bold text-lg text-black">
+        <div className="flex flex-col sm:flex-row gap-4 font-bold text-lg text-black dark:text-gray-200">
           <span>Total Revenue: ${totalRevenue.toFixed(2)}</span>
           <span>Total Profit: ${totalProfit.toFixed(2)}</span>
         </div>
@@ -181,7 +183,7 @@ export default function SalesPage() {
       {/* Sales Grid */}
       <motion.div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-4">
         {filtered.length === 0 ? (
-          <p className="text-black text-center col-span-full py-6">
+          <p className="text-center col-span-full py-6 dark:text-gray-300">
             No sales found.
           </p>
         ) : (

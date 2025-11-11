@@ -55,41 +55,39 @@ export default function SaleCard({
   const total = priceAfterDiscount * sale.quantity;
 
   return (
-    <div className="bg-white p-4 rounded-xl shadow-md border border-gray-200 flex flex-col justify-between">
+    <div className="bg-white dark:bg-gray-800 p-4 rounded-xl shadow-md border border-gray-200 dark:border-gray-700 flex flex-col justify-between text-gray-900 dark:text-gray-100">
       <div className="mb-2">
-        <h3 className="text-lg font-semibold text-gray-900">
+        <h3 className="text-lg font-semibold">
           {sale.medicineInfo.brandName}{" "}
           {sale.medicineInfo.genericInfo?.name && `- ${sale.medicineInfo.genericInfo.name}`}
         </h3>
-        <p className="text-sm text-gray-600">
+        <p className="text-sm text-gray-600 dark:text-gray-300">
           Batch: {sale.medicineInfo.batchNo || "N/A"} | Category:{" "}
           {sale.medicineInfo.categoryInfo?.name || "N/A"}
         </p>
-        <p className="text-sm text-gray-600">
+        <p className="text-sm text-gray-600 dark:text-gray-300">
           Quantity: {sale.quantity} | Status:{" "}
           <span
             className={`font-medium ${
               sale.status === "completed"
-                ? "text-green-600"
+                ? "text-green-600 dark:text-green-400"
                 : sale.status === "pending"
-                ? "text-yellow-600"
-                : "text-red-600"
+                ? "text-yellow-600 dark:text-yellow-400"
+                : "text-red-600 dark:text-red-400"
             }`}
           >
             {sale.status}
           </span>
         </p>
-
-        {/* ✅ Payment Method added here */}
-        <p className="text-sm text-gray-600">
+        <p className="text-sm text-gray-600 dark:text-gray-300">
           Payment Method:{" "}
-          <span className="font-medium text-blue-600">
+          <span className="font-medium text-blue-600 dark:text-blue-400">
             {sale.paymentMethod || "Cash"}
           </span>
         </p>
       </div>
 
-      <div className="mb-2 text-gray-800">
+      <div className="mb-2">
         <p>Selling Price: ${sellingPrice.toFixed(2)}</p>
         <p>Discount: ${discount.toFixed(2)}</p>
         <p>Price After Discount: ${priceAfterDiscount.toFixed(2)}</p>
