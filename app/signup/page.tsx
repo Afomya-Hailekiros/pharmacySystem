@@ -6,9 +6,9 @@ import axios from "@/lib/axios";
 import { Card, CardContent } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
-import { User, Mail, Lock, Shield } from "lucide-react";
-import { useToast } from "@/components/ui/use-toast"; // ✅ use your manual toast hook
-import { Toaster } from "@/components/ui/toaster";   // ✅ make sure Toaster is included
+import { User, Mail, Lock, Shield, Eye, EyeOff } from "lucide-react";
+import { useToast } from "@/components/ui/use-toast";
+import { Toaster } from "@/components/ui/toaster";
 
 export default function SignupPage() {
   const [formData, setFormData] = useState({
@@ -19,8 +19,10 @@ export default function SignupPage() {
     role: "pharmacist",
   });
   const [loading, setLoading] = useState(false);
+  const [showPassword, setShowPassword] = useState(false);
+  const [showConfirmPassword, setShowConfirmPassword] = useState(false);
   const router = useRouter();
-  const { toast } = useToast(); // ✅ correct usage
+  const { toast } = useToast();
 
   const handleChange = (e: any) =>
     setFormData({ ...formData, [e.target.name]: e.target.value });
@@ -39,8 +41,6 @@ export default function SignupPage() {
           title: "✅ Account Created",
           description: "Your account has been created successfully!",
         });
-
-        // Delay redirect slightly so user can see toast
         setTimeout(() => router.push("/login"), 1500);
       } else {
         toast({
@@ -71,6 +71,7 @@ export default function SignupPage() {
           </h1>
 
           <form onSubmit={handleSubmit} className="space-y-4">
+            {/* Username */}
             <div className="relative">
               <User className="absolute left-3 top-3 text-gray-400" size={18} />
               <Input
@@ -84,6 +85,7 @@ export default function SignupPage() {
               />
             </div>
 
+            {/* Email */}
             <div className="relative">
               <Mail className="absolute left-3 top-3 text-gray-400" size={18} />
               <Input
@@ -97,32 +99,49 @@ export default function SignupPage() {
               />
             </div>
 
+            {/* Password with Eye Toggle */}
             <div className="relative">
               <Lock className="absolute left-3 top-3 text-gray-400" size={18} />
               <Input
-                type="password"
+                type={showPassword ? "text" : "password"}
                 name="password"
                 placeholder="Password"
-                className="pl-10"
+                className="pl-10 pr-10"
                 value={formData.password}
                 onChange={handleChange}
                 required
               />
+              <button
+                type="button"
+                onClick={() => setShowPassword(!showPassword)}
+                className="absolute right-3 top-2.5 text-gray-400 hover:text-gray-600"
+              >
+                {showPassword ? <EyeOff size={18} /> : <Eye size={18} />}
+              </button>
             </div>
 
+            {/* Confirm Password with Eye Toggle */}
             <div className="relative">
               <Lock className="absolute left-3 top-3 text-gray-400" size={18} />
               <Input
-                type="password"
+                type={showConfirmPassword ? "text" : "password"}
                 name="passwordConfirm"
                 placeholder="Confirm Password"
-                className="pl-10"
+                className="pl-10 pr-10"
                 value={formData.passwordConfirm}
                 onChange={handleChange}
                 required
               />
+              <button
+                type="button"
+                onClick={() => setShowConfirmPassword(!showConfirmPassword)}
+                className="absolute right-3 top-2.5 text-gray-400 hover:text-gray-600"
+              >
+                {showConfirmPassword ? <EyeOff size={18} /> : <Eye size={18} />}
+              </button>
             </div>
 
+            {/* Role */}
             <div className="relative">
               <Shield className="absolute left-3 top-3 text-gray-400" size={18} />
               <select
@@ -137,6 +156,7 @@ export default function SignupPage() {
               </select>
             </div>
 
+            {/* Submit */}
             <Button
               type="submit"
               disabled={loading}
@@ -148,7 +168,6 @@ export default function SignupPage() {
         </CardContent>
       </Card>
 
-      {/* ✅ Toast renderer */}
       <Toaster />
     </div>
   );

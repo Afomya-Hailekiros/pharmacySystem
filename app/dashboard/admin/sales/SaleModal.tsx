@@ -6,7 +6,7 @@ import { Input } from "@/components/ui/input";
 import axios from "axios";
 import { useToast } from "@/components/ui/use-toast";
 import { useState, useMemo, useEffect } from "react";
-import { Sale, MedicineOption } from "./types"; // ✅ import from your new types.ts file
+import { Sale, MedicineOption } from "./types";
 
 interface SaleModalProps {
   show: boolean;
@@ -31,8 +31,6 @@ export default function SaleModal({
   const [filter, setFilter] = useState("");
   const [previousQuantity, setPreviousQuantity] = useState<number>(sale?.quantity || 0);
   const [sellingPrice, setSellingPrice] = useState<number>(0);
-
-  // ✅ New states for calculated price and total
   const [calculatedPrice, setCalculatedPrice] = useState<number>(0);
   const [totalPrice, setTotalPrice] = useState<number>(0);
 
@@ -40,7 +38,7 @@ export default function SaleModal({
     if (sale) setPreviousQuantity(sale.quantity || 0);
   }, [sale]);
 
-  // Recalculate whenever sellingPrice, discount, or quantity changes
+  // 🔹 Auto-calculate totals
   useEffect(() => {
     const discountValue = sale?.discount || 0;
     const qty = sale?.quantity || 0;
@@ -69,7 +67,6 @@ export default function SaleModal({
     handleChange("medicine", med._id);
     setFilter(med.brandName);
 
-    // Fetch medicine to get latest selling price
     try {
       const res = await axios.get(
         `https://pharmacy-management-9ls6.onrender.com/api/v1/medicines/${med._id}`,
@@ -78,7 +75,7 @@ export default function SaleModal({
       const medData = res.data.data;
       const selling = medData?.retailPrice || medData?.sellingPrice || 0;
       setSellingPrice(selling);
-    } catch (err) {
+    } catch {
       toast({
         title: "❌ Failed to fetch selling price",
         variant: "destructive",
@@ -91,16 +88,13 @@ export default function SaleModal({
     if (!jwt || !sale.medicineInfo._id) return;
 
     try {
-      // Fetch latest stock
       const medicineRes = await axios.get(
         `https://pharmacy-management-9ls6.onrender.com/api/v1/medicines/${sale.medicineInfo._id}`,
         { headers: { Authorization: `Bearer ${jwt}` } }
       );
-
       const latestMedicine = medicineRes.data.data;
       const currentTotalQty = latestMedicine ? latestMedicine.quantity ?? 0 : 0;
 
-      // Compute new quantity
       let newTotalQty = currentTotalQty;
       if (sale._id) {
         newTotalQty = currentTotalQty - (sale.quantity - previousQuantity);
@@ -108,14 +102,13 @@ export default function SaleModal({
         newTotalQty = currentTotalQty - sale.quantity;
       }
 
-      // Update stock
       await axios.patch(
         `https://pharmacy-management-9ls6.onrender.com/api/v1/medicines/${sale.medicineInfo._id}`,
         { quantity: newTotalQty },
         { headers: { Authorization: `Bearer ${jwt}` } }
       );
 
-      // Include selling price in sale payload
+      // 🔹 Include paymentMethod
       const payload = {
         medicine: sale.medicineInfo._id,
         quantity: sale.quantity,
@@ -123,6 +116,7 @@ export default function SaleModal({
         status: sale.status,
         soldBy: sale.soldByInfo._id,
         saleDate: sale.saleDate,
+        paymentMethod: sale.paymentMethod || "cash",
         sellingPrice,
       };
 
@@ -171,8 +165,9 @@ export default function SaleModal({
             <h2 className="text-2xl font-semibold mb-6 text-black text-center">
               {sale._id ? "Edit Sale" : "Add New Sale"}
             </h2>
+
             <form onSubmit={handleSubmit} className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              {/* Medicine search/filter */}
+              {/* Medicine Search */}
               <div className="col-span-1 md:col-span-2">
                 <label className="block mb-1 font-medium text-black">Medicine</label>
                 <Input
@@ -198,7 +193,6 @@ export default function SaleModal({
                 </div>
               </div>
 
-              {/* Quantity */}
               <InputField
                 label="Quantity"
                 type="number"
@@ -206,7 +200,6 @@ export default function SaleModal({
                 onChange={(v) => handleChange("quantity", Number(v))}
               />
 
-              {/* Discount */}
               <InputField
                 label="Discount"
                 type="number"
@@ -214,31 +207,10 @@ export default function SaleModal({
                 onChange={(v) => handleChange("discount", Number(v))}
               />
 
-              {/* Selling Price */}
-              <InputField
-                label="Selling Price"
-                type="number"
-                value={sellingPrice}
-                onChange={() => {}}
-              />
+              <InputField label="Selling Price" type="number" value={sellingPrice} onChange={() => {}} />
+              <InputField label="Price After Discount" type="number" value={calculatedPrice} onChange={() => {}} />
+              <InputField label="Total" type="number" value={totalPrice} onChange={() => {}} />
 
-              {/* Calculated Price per Unit */}
-              <InputField
-                label="Price After Discount"
-                type="number"
-                value={calculatedPrice}
-                onChange={() => {}}
-              />
-
-              {/* Total */}
-              <InputField
-                label="Total"
-                type="number"
-                value={totalPrice}
-                onChange={() => {}}
-              />
-
-              {/* Status */}
               <SelectField
                 label="Status"
                 options={[
@@ -250,7 +222,19 @@ export default function SaleModal({
                 onChange={(v) => handleChange("status", v as Sale["status"])}
               />
 
-              {/* Sold By */}
+              {/* 🔹 New Payment Method */}
+              <SelectField
+                 label="Payment Method"
+                 options={[
+                { _id: "cash", name: "Cash" },
+                { _id: "credit", name: "Credit" },
+                { _id: "mobile", name: "Transfer" },
+                    ]}
+              value={sale.paymentMethod || "cash"}
+             onChange={(v) => handleChange("paymentMethod", v)}
+             />
+
+
               <InputField
                 label="Sold By"
                 value={sale.soldByInfo.userName}
@@ -259,7 +243,6 @@ export default function SaleModal({
                 }
               />
 
-              {/* Date */}
               <InputField
                 label="Date"
                 type="date"
@@ -267,7 +250,6 @@ export default function SaleModal({
                 onChange={(v) => handleChange("saleDate", v)}
               />
 
-              {/* Buttons */}
               <div className="col-span-1 md:col-span-2 flex justify-end gap-2 mt-4">
                 <Button type="button" variant="outline" onClick={() => setShow(false)}>
                   Cancel
@@ -284,7 +266,7 @@ export default function SaleModal({
   );
 }
 
-// Reusable inputs
+// ✅ Reusable Input Components
 const InputField: React.FC<{
   label: string;
   value: string | number;

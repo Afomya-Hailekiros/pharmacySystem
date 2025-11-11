@@ -6,13 +6,14 @@ import axios from "@/lib/axios";
 import { Card, CardContent } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
-import { Mail, Lock } from "lucide-react";
-import { useToast } from "@/components/ui/use-toast"; // ✅ use the toast provider
-import { Toaster } from "@/components/ui/toaster";    // ✅ render toaster
+import { Mail, Lock, Eye, EyeOff } from "lucide-react";
+import { useToast } from "@/components/ui/use-toast";
+import { Toaster } from "@/components/ui/toaster";
 
 export default function LoginPage() {
   const [formData, setFormData] = useState({ email: "", password: "" });
   const [loading, setLoading] = useState(false);
+  const [showPassword, setShowPassword] = useState(false);
   const router = useRouter();
   const { toast } = useToast();
 
@@ -51,8 +52,7 @@ export default function LoginPage() {
             ? "/dashboard/pharmacist"
             : "/unauthorized");
 
-        // Slight delay to let toast appear
-        setTimeout(() => window.location.href = redirectTo, 1200);
+        setTimeout(() => (window.location.href = redirectTo), 1200);
       } else {
         toast({
           title: "❌ Login Failed",
@@ -78,7 +78,9 @@ export default function LoginPage() {
           <h1 className="text-3xl font-semibold text-center mb-6 text-blue-700">
             Login
           </h1>
+
           <form onSubmit={handleSubmit} className="space-y-4">
+            {/* Email Input */}
             <div className="relative">
               <Mail className="absolute left-3 top-3 text-gray-400" size={18} />
               <Input
@@ -92,17 +94,25 @@ export default function LoginPage() {
               />
             </div>
 
+            {/* Password Input with Eye Toggle */}
             <div className="relative">
               <Lock className="absolute left-3 top-3 text-gray-400" size={18} />
               <Input
-                type="password"
+                type={showPassword ? "text" : "password"}
                 name="password"
                 placeholder="Password"
-                className="pl-10"
+                className="pl-10 pr-10"
                 value={formData.password}
                 onChange={handleChange}
                 required
               />
+              <button
+                type="button"
+                onClick={() => setShowPassword(!showPassword)}
+                className="absolute right-3 top-2.5 text-gray-400 hover:text-gray-600"
+              >
+                {showPassword ? <EyeOff size={18} /> : <Eye size={18} />}
+              </button>
             </div>
 
             <Button
@@ -115,7 +125,7 @@ export default function LoginPage() {
           </form>
         </CardContent>
 
-        {/* ✅ Toast container */}
+        {/* Toast container */}
         <Toaster />
       </Card>
     </div>

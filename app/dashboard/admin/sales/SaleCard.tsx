@@ -57,7 +57,7 @@ export default function SaleCard({
   return (
     <div className="bg-white p-4 rounded-xl shadow-md border border-gray-200 flex flex-col justify-between">
       <div className="mb-2">
-        <h3 className="text-lg font-semibold">
+        <h3 className="text-lg font-semibold text-gray-900">
           {sale.medicineInfo.brandName}{" "}
           {sale.medicineInfo.genericInfo?.name && `- ${sale.medicineInfo.genericInfo.name}`}
         </h3>
@@ -66,11 +66,30 @@ export default function SaleCard({
           {sale.medicineInfo.categoryInfo?.name || "N/A"}
         </p>
         <p className="text-sm text-gray-600">
-          Quantity: {sale.quantity} | Status: {sale.status}
+          Quantity: {sale.quantity} | Status:{" "}
+          <span
+            className={`font-medium ${
+              sale.status === "completed"
+                ? "text-green-600"
+                : sale.status === "pending"
+                ? "text-yellow-600"
+                : "text-red-600"
+            }`}
+          >
+            {sale.status}
+          </span>
+        </p>
+
+        {/* ✅ Payment Method added here */}
+        <p className="text-sm text-gray-600">
+          Payment Method:{" "}
+          <span className="font-medium text-blue-600">
+            {sale.paymentMethod || "Cash"}
+          </span>
         </p>
       </div>
 
-      <div className="mb-2">
+      <div className="mb-2 text-gray-800">
         <p>Selling Price: ${sellingPrice.toFixed(2)}</p>
         <p>Discount: ${discount.toFixed(2)}</p>
         <p>Price After Discount: ${priceAfterDiscount.toFixed(2)}</p>

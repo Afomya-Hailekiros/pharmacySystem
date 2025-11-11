@@ -14,6 +14,7 @@ export interface MedicineOption {
 }
 
 export interface Sale {
+  paymentMethod: string;
   sellingPrice: number;
   _id?: string;
   medicineInfo: MedicineOption;
